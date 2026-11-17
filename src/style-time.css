@@ -1,0 +1,10 @@
+button.due{font-size:13px;cursor:pointer;border:0}
+.tpanel .trow2{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:12px;background:transparent;text-align:right;font-size:16px}
+.tpanel .trow2:hover{background:var(--card)}
+.tpanel .trow2.on{background:var(--card);box-shadow:var(--sh);font-weight:700}
+.tpanel .trow2 .tic{width:22px;text-align:center}
+.tpanel .trow2 .tt{font-weight:600;min-width:52px;direction:ltr;text-align:right}
+.tpanel .trow2 .tl{color:var(--muted);font-size:14px}
+.tman{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;background:var(--card);border-radius:12px;box-shadow:var(--sh)}
+.tman span{font-weight:600;white-space:nowrap}
+.tman input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:10px;padding:8px;font-size:16px;background:var(--bg);color:var(--ink);direction:ltr}

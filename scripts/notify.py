@@ -2,6 +2,7 @@
  1. New task that someone added for someone else  -> push to the list's members (except the creator)
  2. Morning reminder (from 07:00)                  -> tasks due today / overdue
  3. After-school reminder (from 14:30)             -> tasks due today / overdue + open tasks without a date
+ 4. Task with a time (e.g. 15:00) due today        -> reminder at that time to the list's members
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
 import os, json, time, datetime
 from zoneinfo import ZoneInfo
@@ -116,6 +117,26 @@ if (now.hour, now.minute) >= MORNING and now.hour < 12 and state.get('morning') 
     digest('morning'); state['morning'] = today
 if (now.hour, now.minute) >= AFTER_SCHOOL and now.hour < 20 and state.get('afternoon') != today:
     digest('afternoon'); state['afternoon'] = today
+
+# ---------- 4. reminder at the task's time ----------
+now_min = now.hour * 60 + now.minute
+for d in db.collection('tasks').where('due', '==', today).stream():
+    t = d.to_dict()
+    tm = t.get('time') or ''
+    if not tm or t.get('done') or t.get('archived'):
+        continue
+    key = today + ' ' + tm
+    try:
+        tmin = int(tm[:2]) * 60 + int(tm[3:5])
+    except ValueError:
+        continue
+    if tmin > now_min or t.get('remindedFor') == key:
+        continue
+    if now_min - tmin <= 60:          # don't remind about times that passed long ago
+        where = LIST_NAMES.get(t.get('list'), '')
+        for r in MEMBERS.get(t.get('list'), []):
+            print('time ->', r, push(r, f'⏰ {tm} · {t["title"]}', f'ברשימה: {where}'))
+    d.reference.update({'remindedFor': key})
 
 meta_ref.set(state)
 print('done', now.isoformat())
