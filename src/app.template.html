@@ -47,6 +47,16 @@ var ACCESS = {
   yuval: ['yuval', 'kids', 'family'],
   omer:  ['omer', 'kids', 'family']
 };
+var TOPICS = [
+  { id: 'medical',   name: 'רפואי',  icon: '🩺' },
+  { id: 'shopping',  name: 'קניות',  icon: '🛒' },
+  { id: 'car',       name: 'רכב',    icon: '🚗' },
+  { id: 'insurance', name: 'ביטוח',  icon: '🛡️' },
+  { id: 'home',      name: 'דירה',   icon: '🏠' },
+  { id: '',          name: 'כללי',   icon: '📌' }
+];
+var T = {}; TOPICS.forEach(function (t) { T[t.id] = t; });
+function topicOf(t) { return T[t.topic || ''] || T['']; }
 var P = {}; PEOPLE.forEach(function (p) { P[p.id] = p; });
 var L = {}; LISTS.forEach(function (l) { L[l.id] = l; });
 
@@ -68,6 +78,29 @@ function when(ts) {
   var y = new Date(now); y.setDate(now.getDate() - 1);
   if (d.toDateString() === y.toDateString()) return 'אתמול ' + t;
   return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) + ' ' + t;
+}
+/* ---- due dates (stored as 'YYYY-MM-DD') ---- */
+function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function dayDiff(due) {
+  var p = due.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), n = new Date();
+  n = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  return Math.round((d - n) / 86400000);
+}
+var WD = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+function dueLabel(due) {
+  if (!due) return null;
+  var k = dayDiff(due), p = due.split('-'), dm = (+p[2]) + '/' + (+p[1]);
+  if (k < 0) return { cls: 'late', txt: 'באיחור · ' + dm };
+  if (k === 0) return { cls: 'today', txt: 'היום' };
+  if (k === 1) return { cls: 'soon', txt: 'מחר' };
+  if (k < 7) return { cls: 'soon', txt: 'יום ' + WD[new Date(+p[0], +p[1] - 1, +p[2]).getDay()] };
+  return { cls: '', txt: dm };
+}
+function byDue(a, b) {
+  if (a.due && b.due) return a.due < b.due ? -1 : a.due > b.due ? 1 : (b.createdAt || 0) - (a.createdAt || 0);
+  if (a.due) return -1;
+  if (b.due) return 1;
+  return (b.createdAt || 0) - (a.createdAt || 0);
 }
 var toastT;
 function toast(m) {
@@ -166,7 +199,8 @@ function makeFirebaseStore(cfg) {
 var app = document.getElementById('app');
 var store = null;
 var st = { screen: 'boot', me: null, email: '', lists: [], active: null, tasks: [], loaded: false,
-           open: null, editing: null, sure: null, panel: false, members: [], unsubTasks: null, unsubMembers: null };
+           open: null, editing: null, sure: null, panel: false, members: [], unsubTasks: null, unsubMembers: null,
+           newDue: '', newTopic: '', view: LS.get('view') === 'topic' ? 'topic' : 'date' };
 
 function renderLogin(err, busy) {
   var demo = store.mode === 'demo';
@@ -205,13 +239,28 @@ function stopMain() {
 function renderShell() {
   app.innerHTML =
     '<header><div class="topbar">' + logo() + wordmark() + '<span class="sp"></span>' +
+    (store.mode === 'demo' ? '<button class="iconbtn" data-act="logout" aria-label="החלפת משתמש" title="החלפת משתמש">⇄</button>' : '') +
     '<button class="mebtn" data-act="panel">' + esc(st.me.name) + av(st.me.id, 'sm') + '</button></div>' +
     '<div class="chips" id="chips"></div></header>' +
     '<main id="list"></main>' +
-    '<form class="addbar" id="addform"><div class="in"><input id="newtask" data-keep="new" autocomplete="off" enterkeyhint="send" maxlength="200" placeholder="משימה חדשה…"><button type="submit" aria-label="הוספה">+</button></div></form>' +
+    '<form class="addbar" id="addform"><div class="opts" id="opts"></div><div class="in"><input id="newtask" data-keep="new" autocomplete="off" enterkeyhint="send" maxlength="200" placeholder="משימה חדשה…"><button type="submit" aria-label="הוספה">+</button></div></form>' +
     '<div id="sheet"></div>';
   document.getElementById('addform').addEventListener('submit', function (e) { e.preventDefault(); addTask(); });
-  renderChips(); renderList();
+  renderChips(); renderList(); renderOpts();
+}
+/* date + topic picker above the "new task" field */
+function dateChip(value, dataId, emptyTxt) {
+  var dl = dueLabel(value);
+  return '<label class="opt datechip ' + (value ? 'on' : '') + '">📅 <span>' + (dl ? dl.txt : emptyTxt) + '</span>' +
+    '<input type="date" data-date="' + dataId + '" value="' + esc(value) + '"></label>' +
+    (value ? '<button type="button" class="opt clr" data-act="cleardate" data-id="' + dataId + '" aria-label="ניקוי תאריך">✕</button>' : '');
+}
+function renderOpts() {
+  var el = document.getElementById('opts'); if (!el) return;
+  el.innerHTML = dateChip(st.newDue, 'new', 'תאריך') + '<span class="sep"></span>' +
+    TOPICS.map(function (t) {
+      return '<button type="button" class="opt ' + (st.newTopic === t.id ? 'on' : '') + '" data-act="newtopic" data-id="' + t.id + '">' + t.icon + ' ' + esc(t.name) + '</button>';
+    }).join('');
 }
 function counts() { var c = {}; st.tasks.forEach(function (t) { if (!t.done) c[t.list] = (c[t.list] || 0) + 1; }); return c; }
 function renderChips() {
@@ -245,10 +294,14 @@ function taskHtml(t) {
   var meta = t.done
     ? '<span class="who">✓ ' + av(t.doneBy, 'xs') + ' ' + esc((P[t.doneBy] || {}).name || '') + ' · ' + when(t.doneAt) + '</span>'
     : '<span class="who">' + by + when(t.createdAt) + '</span>';
+  var dl = !t.done && dueLabel(t.due);
+  var dueHtml = dl ? '<span class="due ' + dl.cls + '">📅 ' + dl.txt + '</span>' : '';
+  var tp = topicOf(t);
+  var topicHtml = (t.topic && !(st.view === 'topic')) ? '<span class="topic">' + tp.icon + ' ' + esc(tp.name) + '</span>' : '';
   var h = '<div class="task ' + (t.done ? 'done' : '') + '"><div class="trow">' +
     '<button class="check" data-act="toggle" data-id="' + t.id + '" aria-label="סימון">' + (t.done ? '✓' : '') + '</button>' +
     '<div class="tbody" data-act="open" data-id="' + t.id + '"><div class="ttitle">' + esc(t.title) + '</div>' +
-    '<div class="tmeta">' + meta + (n ? '<span class="badge">💬 ' + n + '</span>' : '') + '</div></div></div>';
+    '<div class="tmeta">' + dueHtml + topicHtml + meta + (n ? '<span class="badge">💬 ' + n + '</span>' : '') + '</div></div></div>';
   if (open) {
     h += '<div class="details">';
     (t.notes || []).forEach(function (no) {
@@ -257,8 +310,10 @@ function taskHtml(t) {
     h += '<div class="row"><input class="inp" data-keep="note-' + t.id + '" id="note-' + t.id + '" placeholder="הוספת הערה…" maxlength="500" enterkeyhint="send" data-enter="note" data-id="' + t.id + '">' +
       '<button class="btn" data-act="note" data-id="' + t.id + '">שליחה</button></div>';
     if (st.editing === t.id) {
-      h += '<div class="row" style="margin-top:10px"><input class="inp" data-keep="edit-' + t.id + '" id="edit-' + t.id + '" value="' + esc(t.title) + '" maxlength="200" data-enter="save" data-id="' + t.id + '">' +
-        '<button class="btn" data-act="save" data-id="' + t.id + '">שמירה</button></div>';
+      h += '<div class="editbox"><input class="inp" data-keep="edit-' + t.id + '" id="edit-' + t.id + '" value="' + esc(t.title) + '" maxlength="200" data-enter="save" data-id="' + t.id + '">' +
+        '<div class="opts inline">' + dateChip(st.editDue, 'edit', 'בלי תאריך') + '<span class="sep"></span>' +
+        TOPICS.map(function (x) { return '<button type="button" class="opt ' + (st.editTopic === x.id ? 'on' : '') + '" data-act="edittopic" data-id="' + x.id + '">' + x.icon + ' ' + esc(x.name) + '</button>'; }).join('') +
+        '</div><div class="actions" style="margin-top:4px"><button class="btn" data-act="save" data-id="' + t.id + '">שמירה</button><button class="btn soft" data-act="canceledit">ביטול</button></div></div>';
     }
     h += '<div class="actions">' +
       (st.editing === t.id ? '' : '<button class="btn soft" data-act="edit" data-id="' + t.id + '">✏️ עריכה</button>') +
@@ -276,13 +331,20 @@ function renderList() {
   var restore = keepInputs();
   var l = L[st.active];
   var ts = st.tasks.filter(function (t) { return t.list === st.active; });
-  var open = ts.filter(function (t) { return !t.done; }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  var open = ts.filter(function (t) { return !t.done; }).sort(byDue);
   var done = ts.filter(function (t) { return t.done; }).sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
-  var html = '<div class="listhead"><h1>' + (l.icon ? l.icon + ' ' : '') + esc(l.name) + '</h1><small>' + listSubtitle(l) + '</small></div>';
+  var html = '<div class="listhead"><div class="lh"><h1>' + (l.icon ? l.icon + ' ' : '') + esc(l.name) + '</h1><small>' + listSubtitle(l) + '</small></div>' +
+    '<div class="seg"><button class="' + (st.view === 'date' ? 'on' : '') + '" data-act="view" data-id="date">📅 לפי תאריך</button>' +
+    '<button class="' + (st.view === 'topic' ? 'on' : '') + '" data-act="view" data-id="topic">🗂 לפי נושא</button></div></div>';
   if (!st.loaded) html += '<div class="loading"><div class="spin"></div>טוען משימות…</div>';
   else if (!ts.length) html += '<div class="empty"><div class="big">🎉</div>אין משימות כאן.<br>אפשר להוסיף משימה למטה.</div>';
   else {
-    html += open.map(taskHtml).join('');
+    if (st.view === 'topic') {
+      TOPICS.forEach(function (tp) {
+        var g = open.filter(function (t) { return topicOf(t) === tp; });
+        if (g.length) html += '<div class="tsec">' + tp.icon + ' ' + esc(tp.name) + ' <span>' + g.length + '</span></div>' + g.map(taskHtml).join('');
+      });
+    } else html += open.map(taskHtml).join('');
     if (!open.length) html += '<div class="empty" style="padding:20px">הכל בוצע! 👏</div>';
     if (done.length) html += '<div class="donehdr">בוצעו (' + done.length + ')</div>' + done.slice(0, 30).map(taskHtml).join('');
   }
@@ -323,7 +385,10 @@ function fail(e) { console.error(e); toast('לא נשמר: ' + ((e && (e.code ||
 function addTask() {
   var i = document.getElementById('newtask'), v = clean(i.value, 200); if (!v) return;
   i.value = ''; i.focus();
-  store.add({ list: st.active, title: v, done: false, createdBy: st.me.id, createdAt: Date.now(), doneBy: '', doneAt: 0, notes: [] }).catch(fail);
+  store.add({ list: st.active, title: v, due: st.newDue, topic: st.newTopic, done: false, createdBy: st.me.id,
+              createdAt: Date.now(), doneBy: '', doneAt: 0, notes: [] }).catch(fail);
+  if (st.newDue) toast('נוסף ל' + dueLabel(st.newDue).txt);
+  st.newDue = ''; renderOpts();
 }
 function find(id) { return st.tasks.filter(function (t) { return t.id === id; })[0]; }
 var sureT;
@@ -354,10 +419,21 @@ app.addEventListener('click', function (e) {
       t.done = nd; t.doneBy = nd ? st.me.id : ''; t.doneAt = nd ? Date.now() : 0; renderChips(); renderList();
       store.update(id, { done: nd, doneBy: t.doneBy, doneAt: t.doneAt }).catch(fail); break;
     case 'open': st.open = st.open === id ? null : id; st.editing = null; renderList(); break;
-    case 'edit': st.editing = id; renderList(); var ei = document.getElementById('edit-' + id); if (ei) ei.focus(); break;
+    case 'edit':
+      t = find(id); if (!t) return;
+      st.editing = id; st.editDue = t.due || ''; st.editTopic = t.topic || ''; renderList(); break;
+    case 'canceledit': st.editing = null; renderList(); break;
     case 'save':
       var v = clean((document.getElementById('edit-' + id) || {}).value, 200); if (!v) return;
-      st.editing = null; store.update(id, { title: v }).catch(fail); renderList(); break;
+      st.editing = null;
+      t = find(id); if (t) { t.title = v; t.due = st.editDue; t.topic = st.editTopic; }
+      store.update(id, { title: v, due: st.editDue, topic: st.editTopic }).catch(fail); renderList(); break;
+    case 'newtopic': st.newTopic = id; renderOpts(); break;
+    case 'edittopic': st.editTopic = id; renderList(); break;
+    case 'cleardate':
+      if (id === 'new') { st.newDue = ''; renderOpts(); } else { st.editDue = ''; renderList(); }
+      break;
+    case 'view': st.view = id; LS.set('view', id); renderList(); break;
     case 'note':
       var ni = document.getElementById('note-' + id), txt = ni ? clean(ni.value, 500) : '';
       if (!txt) return; ni.value = '';
@@ -383,6 +459,17 @@ app.addEventListener('click', function (e) {
       if (st.sure !== 'mail-' + id) { askSure('mail-' + id); renderPanel(); return; }
       st.sure = null; store.removeMember(id).catch(fail); break;
   }
+});
+app.addEventListener('change', function (e) {
+  var k = e.target.getAttribute && e.target.getAttribute('data-date'); if (!k) return;
+  if (k === 'new') { st.newDue = e.target.value || ''; renderOpts(); }
+  else { st.editDue = e.target.value || ''; renderList(); }
+});
+/* open the native date picker on desktop browsers too */
+app.addEventListener('click', function (e) {
+  var lab = e.target.closest && e.target.closest('.datechip'); if (!lab) return;
+  var inp = lab.querySelector('input[type=date]');
+  if (inp && e.target !== inp && inp.showPicker) { e.preventDefault(); try { inp.showPicker(); } catch (er) {} }
 });
 app.addEventListener('keydown', function (e) {
   if (e.key !== 'Enter') return;
