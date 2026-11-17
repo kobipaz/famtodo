@@ -47,18 +47,27 @@ var ACCESS = {
   yuval: ['yuval', 'kids', 'family'],
   omer:  ['omer', 'kids', 'family']
 };
-var TOPICS = [
+var BASE_TOPICS = [
   { id: 'medical',   name: 'רפואי',  icon: '🩺' },
   { id: 'shopping',  name: 'קניות',  icon: '🛒' },
   { id: 'car',       name: 'רכב',    icon: '🚗' },
   { id: 'insurance', name: 'ביטוח',  icon: '🛡️' },
-  { id: 'home',      name: 'דירה',   icon: '🏠' },
-  { id: '',          name: 'כללי',   icon: '📌' }
+  { id: 'home',      name: 'דירה',   icon: '🏠' }
 ];
-var T = {}; TOPICS.forEach(function (t) { T[t.id] = t; });
-function topicOf(t) { return T[t.topic || ''] || T['']; }
+var GENERAL = { id: '', name: 'כללי', icon: '📌' };
+var TOPICS = [], T = {};
+/* default topics + family-added topics (from the database) + "general" last */
+function setTopics(custom) {
+  TOPICS = BASE_TOPICS.concat((custom || []).map(function (c) { c.custom = true; return c; }), [GENERAL]);
+  T = {}; TOPICS.forEach(function (t) { T[t.id] = t; });
+}
+setTopics([]);
+function topicOf(t) { return T[t.topic || ''] || GENERAL; }
+var EMOJIS = ['🎓', '🏫', '💼', '🎵', '🎸', '⚽', '🐶', '💰', '🧾', '🏦', '🎁', '🎉', '✈️', '🍽️', '🧹', '🔧', '💊', '🦷', '📚', '🌱', '📦', '📞', '💻', '👕'];
 var P = {}; PEOPLE.forEach(function (p) { P[p.id] = p; });
 var L = {}; LISTS.forEach(function (l) { L[l.id] = l; });
+var ALL = { id: 'all', name: 'הכל', color: '#14213d', icon: '📋' };
+L.all = ALL;
 
 /* ---------------- small helpers ---------------- */
 var LS = {
@@ -142,7 +151,14 @@ function makeDemoStore() {
       return function () { subs = subs.filter(function (x) { return x !== f; }); };
     },
     addMember: function (email, person) { var m = members(); m[email] = person; write('members', m); return Promise.resolve(); },
-    removeMember: function (email) { var m = members(); delete m[email]; write('members', m); return Promise.resolve(); }
+    removeMember: function (email) { var m = members(); delete m[email]; write('members', m); return Promise.resolve(); },
+    subscribeTopics: function (cb) {
+      var f = function () { cb(read('topics') || []); };
+      subs.push(f); setTimeout(f, 20);
+      return function () { subs = subs.filter(function (x) { return x !== f; }); };
+    },
+    addTopic: function (t) { var a = read('topics') || []; t.id = 'c_' + uid(); a.push(t); write('topics', a); return Promise.resolve(t.id); },
+    removeTopic: function (id) { write('topics', (read('topics') || []).filter(function (t) { return t.id !== id; })); return Promise.resolve(); }
   };
 }
 
@@ -187,7 +203,16 @@ function makeFirebaseStore(cfg) {
         }, onErr);
       },
       addMember: function (email, person) { return F.setDoc(F.doc(db, 'members', email), { person: person, addedAt: Date.now() }); },
-      removeMember: function (email) { return F.deleteDoc(F.doc(db, 'members', email)); }
+      removeMember: function (email) { return F.deleteDoc(F.doc(db, 'members', email)); },
+      subscribeTopics: function (cb, onErr) {
+        return F.onSnapshot(F.collection(db, 'topics'), function (snap) {
+          var a = snap.docs.map(function (d) { var x = d.data(); return { id: d.id, name: x.name, icon: x.icon, createdAt: x.createdAt || 0 }; });
+          a.sort(function (x, y) { return x.createdAt - y.createdAt; });
+          cb(a);
+        }, onErr);
+      },
+      addTopic: function (t) { return F.addDoc(F.collection(db, 'topics'), t).then(function (r) { return r.id; }); },
+      removeTopic: function (id) { return F.deleteDoc(F.doc(db, 'topics', id)); }
     };
     return store;
   });
@@ -200,7 +225,7 @@ var app = document.getElementById('app');
 var store = null;
 var st = { screen: 'boot', me: null, email: '', lists: [], active: null, tasks: [], loaded: false,
            open: null, editing: null, sure: null, panel: false, members: [], unsubTasks: null, unsubMembers: null,
-           newDue: '', newTopic: '', view: LS.get('view') === 'topic' ? 'topic' : 'date' };
+           newDue: '', newTopic: '', topicSheet: false, newEmoji: '', unsubTopics: null, view: LS.get('view') === 'topic' ? 'topic' : 'date' };
 
 function renderLogin(err, busy) {
   var demo = store.mode === 'demo';
@@ -220,9 +245,11 @@ function renderLogin(err, busy) {
 function startMain(person) {
   st.me = P[person]; st.lists = ACCESS[person].slice();
   var saved = LS.get('list_' + person);
-  st.active = st.lists.indexOf(saved) >= 0 ? saved : st.lists[0];
+  st.active = (saved === 'all' || st.lists.indexOf(saved) >= 0) ? saved : st.lists[0];
   st.screen = 'main'; st.loaded = false; st.open = null; st.tasks = [];
   renderShell();
+  if (st.unsubTopics) st.unsubTopics();
+  st.unsubTopics = store.subscribeTopics(function (a) { setTopics(a); renderOpts(); renderList(); if (st.panel) renderPanel(); }, function () {});
   if (st.unsubTasks) st.unsubTasks();
   var timer = setTimeout(function () { if (!st.loaded) toast('הטעינה איטית… בדקו חיבור לאינטרנט'); }, 10000);
   st.unsubTasks = store.subscribeTasks(st.lists, function (tasks) {
@@ -233,6 +260,7 @@ function startMain(person) {
 function stopMain() {
   if (st.unsubTasks) st.unsubTasks(); st.unsubTasks = null;
   if (st.unsubMembers) st.unsubMembers(); st.unsubMembers = null;
+  if (st.unsubTopics) st.unsubTopics(); st.unsubTopics = null;
   st.me = null; st.panel = false; st.tasks = [];
 }
 
@@ -260,12 +288,14 @@ function renderOpts() {
   el.innerHTML = dateChip(st.newDue, 'new', 'תאריך') + '<span class="sep"></span>' +
     TOPICS.map(function (t) {
       return '<button type="button" class="opt ' + (st.newTopic === t.id ? 'on' : '') + '" data-act="newtopic" data-id="' + t.id + '">' + t.icon + ' ' + esc(t.name) + '</button>';
-    }).join('');
+    }).join('') + '<button type="button" class="opt addtopic" data-act="topicsheet">＋ נושא</button>';
 }
 function counts() { var c = {}; st.tasks.forEach(function (t) { if (!t.done) c[t.list] = (c[t.list] || 0) + 1; }); return c; }
 function renderChips() {
   var el = document.getElementById('chips'); if (!el) return;
   var c = counts(), html = '', prev = null;
+  var total = 0; Object.keys(c).forEach(function (k) { total += c[k]; });
+  html += '<button class="chip ' + (st.active === 'all' ? 'on' : '') + '" data-act="list" data-id="all" style="' + (st.active === 'all' ? 'background:' + ALL.color + ';' : '') + '"><span>' + ALL.icon + '</span>' + ALL.name + (total ? '<span class="n">' + total + '</span>' : '') + '</button><span class="sep"></span>';
   st.lists.forEach(function (id, i) {
     var l = L[id], grp = l.personal ? (id === st.me.id ? 'me' : 'p') : 'g';
     if (i > 0 && prev !== grp) html += '<span class="sep"></span>';
@@ -298,6 +328,8 @@ function taskHtml(t) {
   var dueHtml = dl ? '<span class="due ' + dl.cls + '">📅 ' + dl.txt + '</span>' : '';
   var tp = topicOf(t);
   var topicHtml = (t.topic && !(st.view === 'topic')) ? '<span class="topic">' + tp.icon + ' ' + esc(tp.name) + '</span>' : '';
+  var lt = L[t.list];
+  if (st.active === 'all' && lt) topicHtml = '<span class="lst" style="background:' + lt.color + '">' + (lt.icon ? lt.icon + ' ' : '') + esc(lt.name) + '</span>' + topicHtml;
   var h = '<div class="task ' + (t.done ? 'done' : '') + '"><div class="trow">' +
     '<button class="check" data-act="toggle" data-id="' + t.id + '" aria-label="סימון">' + (t.done ? '✓' : '') + '</button>' +
     '<div class="tbody" data-act="open" data-id="' + t.id + '"><div class="ttitle">' + esc(t.title) + '</div>' +
@@ -323,6 +355,7 @@ function taskHtml(t) {
   return h + '</div>';
 }
 function listSubtitle(l) {
+  if (l.id === 'all') return 'מכל הרשימות שלך';
   if (l.personal) return l.id === st.me.id ? 'המשימות שלי' : 'הרשימה של ' + esc(l.name);
   return l.members.map(function (m) { return P[m].name; }).join(' · ');
 }
@@ -330,10 +363,10 @@ function renderList() {
   var el = document.getElementById('list'); if (!el) return;
   var restore = keepInputs();
   var l = L[st.active];
-  var ts = st.tasks.filter(function (t) { return t.list === st.active; });
+  var ts = st.active === 'all' ? st.tasks.slice() : st.tasks.filter(function (t) { return t.list === st.active; });
   var open = ts.filter(function (t) { return !t.done; }).sort(byDue);
   var done = ts.filter(function (t) { return t.done; }).sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
-  var html = '<div class="listhead"><div class="lh"><h1>' + (l.icon ? l.icon + ' ' : '') + esc(l.name) + '</h1><small>' + listSubtitle(l) + '</small></div>' +
+  var html = '<div class="listhead"><div class="lh"><h1>' + (l.icon ? l.icon + ' ' : '') + esc(l.id === 'all' ? 'כל המשימות' : l.name) + '</h1><small>' + listSubtitle(l) + '</small></div>' +
     '<div class="seg"><button class="' + (st.view === 'date' ? 'on' : '') + '" data-act="view" data-id="date">📅 לפי תאריך</button>' +
     '<button class="' + (st.view === 'topic' ? 'on' : '') + '" data-act="view" data-id="topic">🗂 לפי נושא</button></div></div>';
   if (!st.loaded) html += '<div class="loading"><div class="spin"></div>טוען משימות…</div>';
@@ -351,12 +384,23 @@ function renderList() {
   if (store.mode === 'demo') html += '<div class="demo">מצב הדגמה — הנתונים נשמרים רק במכשיר הזה</div>';
   el.innerHTML = html;
   restore();
-  document.getElementById('newtask').placeholder = 'משימה חדשה ל' + (l.personal && l.id === st.me.id ? 'רשימה שלי' : l.name) + '…';
+  document.getElementById('newtask').placeholder = 'משימה חדשה ל' + ((l.personal && l.id === st.me.id) || l.id === 'all' ? 'רשימה שלי' : l.name) + '…';
 }
 
 /* ---------------- side panel (profile + admin) ---------------- */
+function renderTopicSheet(el) {
+  var h = '<div class="sheet" data-act="closesheet"><div class="panel" data-stop="1"><h3>🗂 נושא חדש</h3>' +
+    '<input class="inp" id="topicname" data-keep="topicname" maxlength="20" placeholder="שם הנושא, למשל: לימודים" enterkeyhint="done" data-enter="savetopic" data-id="x">' +
+    '<div style="color:var(--muted);font-size:14px;margin:14px 2px 8px">בחרו סמל:</div><div class="emojis">' +
+    EMOJIS.map(function (e) { return '<button type="button" class="emo ' + (st.newEmoji === e ? 'on' : '') + '" data-act="pickemoji" data-id="' + e + '">' + e + '</button>'; }).join('') +
+    '</div><div class="actions"><button class="btn" data-act="savetopic" data-id="x" style="flex:1">הוספת הנושא</button><button class="btn soft" data-act="closesheet" style="flex:1">ביטול</button></div></div></div>';
+  var restore = keepInputs();
+  el.innerHTML = h;
+  restore();
+}
 function renderPanel() {
   var el = document.getElementById('sheet'); if (!el) return;
+  if (st.topicSheet) return renderTopicSheet(el);
   if (!st.panel) { el.innerHTML = ''; return; }
   var h = '<div class="sheet" data-act="closepanel"><div class="panel" data-stop="1"><h3>' + av(st.me.id, 'sm') + ' ' + esc(st.me.name) +
     (st.email ? '<small style="color:var(--muted);font-weight:400;font-size:13px;direction:ltr">' + esc(st.email) + '</small>' : '') + '</h3>';
@@ -374,6 +418,14 @@ function renderPanel() {
       h += '<div class="addmail"><input class="inp" type="email" inputmode="email" autocapitalize="off" autocorrect="off" placeholder="name@gmail.com" data-keep="mail-' + p.id + '" id="mail-' + p.id + '" data-enter="addmail" data-id="' + p.id + '"><button class="btn soft" data-act="addmail" data-id="' + p.id + '">הוספה</button></div></div>';
     });
   }
+  var custom = TOPICS.filter(function (t) { return t.custom; });
+  if (st.me.admin) {
+    h += '<div class="ph" style="display:flex;align-items:center;gap:8px;font-weight:700;margin:18px 2px 6px">🗂 נושאים שנוספו</div>';
+    if (!custom.length) h += '<div style="color:var(--muted);font-size:14px;margin:0 4px 6px">עוד לא נוספו נושאים. מוסיפים עם ＋ נושא מעל שדה המשימה.</div>';
+    custom.forEach(function (t) {
+      h += '<div class="mail" style="direction:rtl"><span>' + t.icon + ' ' + esc(t.name) + '</span><button data-act="rmtopic" data-id="' + esc(t.id) + '">' + (st.sure === 'topic-' + t.id ? 'להסיר?' : 'הסרה') + '</button></div>';
+    });
+  }
   h += '<div class="actions"><button class="btn danger" data-act="logout" style="flex:1">יציאה</button><button class="btn soft" data-act="closepanel" style="flex:1">סגירה</button></div></div></div>';
   var restore = keepInputs();
   el.innerHTML = h;
@@ -385,7 +437,7 @@ function fail(e) { console.error(e); toast('לא נשמר: ' + ((e && (e.code ||
 function addTask() {
   var i = document.getElementById('newtask'), v = clean(i.value, 200); if (!v) return;
   i.value = ''; i.focus();
-  store.add({ list: st.active, title: v, due: st.newDue, topic: st.newTopic, done: false, createdBy: st.me.id,
+  store.add({ list: st.active === 'all' ? st.me.id : st.active, title: v, due: st.newDue, topic: st.newTopic, done: false, createdBy: st.me.id,
               createdAt: Date.now(), doneBy: '', doneAt: 0, notes: [] }).catch(fail);
   if (st.newDue) toast('נוסף ל' + dueLabel(st.newDue).txt);
   st.newDue = ''; renderOpts();
@@ -400,7 +452,7 @@ function signOut() {
 
 app.addEventListener('click', function (e) {
   var b = e.target.closest('[data-act]'); if (!b) return;
-  if (b.getAttribute('data-act') === 'closepanel' && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
+  if (/^close(panel|sheet)$/.test(b.getAttribute('data-act')) && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
   var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), t;
   switch (act) {
     case 'google':
@@ -446,6 +498,24 @@ app.addEventListener('click', function (e) {
       if (st.me.admin && !st.unsubMembers) st.unsubMembers = store.subscribeMembers(function (m) { st.members = m; renderPanel(); }, fail);
       break;
     case 'closepanel': st.panel = false; renderPanel(); break;
+    case 'topicsheet': st.topicSheet = true; st.newEmoji = st.newEmoji || EMOJIS[0]; renderPanel(); var tn = document.getElementById('topicname'); if (tn) tn.focus(); break;
+    case 'closesheet': st.topicSheet = false; renderPanel(); break;
+    case 'pickemoji': st.newEmoji = id; renderPanel(); break;
+    case 'savetopic':
+      var tname = clean((document.getElementById('topicname') || {}).value, 20);
+      if (!tname) return toast('כתבו שם לנושא');
+      if (TOPICS.some(function (x) { return x.name === tname; })) return toast('כבר יש נושא בשם הזה');
+      var icon = st.newEmoji || EMOJIS[0];
+      document.getElementById('topicname').value = '';
+      st.topicSheet = false; renderPanel();
+      store.addTopic({ name: tname, icon: icon, createdBy: st.me.id, createdAt: Date.now() }).then(function (newId) {
+        st.newTopic = newId; renderOpts(); toast('נוסף הנושא ' + icon + ' ' + tname);
+      }).catch(fail);
+      break;
+    case 'rmtopic':
+      if (st.sure !== 'topic-' + id) { askSure('topic-' + id); renderPanel(); return; }
+      st.sure = null; if (st.newTopic === id) st.newTopic = '';
+      store.removeTopic(id).then(function () { toast('הנושא הוסר (המשימות שלו עברו ל"כללי")'); }).catch(fail); break;
     case 'logout': signOut(); break;
     case 'addmail':
       var mi = document.getElementById('mail-' + id), em = mi ? mi.value.trim().toLowerCase() : '';
