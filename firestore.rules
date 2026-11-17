@@ -38,7 +38,8 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow read, delete: if isMember() && resource.data.list in lists();
+      allow read: if isMember() && resource.data.list in lists();
+      allow delete: if isMember() && resource.data.list in lists() && person() in ['kobi', 'orit'];
       allow create: if isMember() && request.resource.data.list in lists() && validTask(request.resource.data);
       allow update: if isMember() && resource.data.list in lists()
                     && request.resource.data.list == resource.data.list && validTask(request.resource.data);
