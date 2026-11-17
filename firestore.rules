@@ -1,0 +1,39 @@
+rules_version = '2';
+// FamToDo — who may read/write what. Mirrors ACCESS in src/app.template.html.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
+    function email() { return request.auth.token.email.lower(); }
+    function isOwner() { return signedIn() && email() == 'kobipaz.music@gmail.com'; }
+    function memberDoc() { return /databases/$(database)/documents/members/$(email()); }
+    function isMember() { return isOwner() || (signedIn() && exists(memberDoc())); }
+    function person() { return isOwner() ? 'kobi' : get(memberDoc()).data.person; }
+    function isAdmin() { return isOwner() || (isMember() && person() == 'kobi'); }
+    function lists() {
+      return {
+        'kobi':  ['kobi', 'family', 'parents', 'kids', 'orit', 'aviv', 'yuval', 'omer'],
+        'orit':  ['orit', 'family', 'parents', 'kids', 'aviv', 'yuval', 'omer'],
+        'aviv':  ['aviv', 'kids', 'family'],
+        'yuval': ['yuval', 'kids', 'family'],
+        'omer':  ['omer', 'kids', 'family']
+      }[person()];
+    }
+    function validTask(d) {
+      return d.title is string && d.title.size() > 0 && d.title.size() <= 200
+          && d.list is string && d.done is bool && d.notes is list && d.notes.size() <= 200;
+    }
+
+    match /members/{mail} {
+      allow read: if isAdmin() || (signedIn() && mail == email());
+      allow write: if isAdmin()
+        && (request.method == 'delete' || request.resource.data.person in ['kobi', 'orit', 'aviv', 'yuval', 'omer']);
+    }
+
+    match /tasks/{taskId} {
+      allow read, delete: if isMember() && resource.data.list in lists();
+      allow create: if isMember() && request.resource.data.list in lists() && validTask(request.resource.data);
+      allow update: if isMember() && resource.data.list in lists()
+                    && request.resource.data.list == resource.data.list && validTask(request.resource.data);
+    }
+  }
+}
