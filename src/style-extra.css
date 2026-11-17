@@ -1,0 +1,15 @@
+.task{position:relative}
+.trow{position:relative;z-index:1;background:var(--card);touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.task.done .trow{background:var(--card)}
+.swbg{position:absolute;inset:0;display:none;align-items:center;justify-content:space-between;padding:0 20px;font-weight:700;color:#fff;font-size:15px}
+.task.sw-del .swbg,.task.sw-arc .swbg{display:flex}
+.task.sw-del .swbg{background:#f3a6a8}
+.task.sw-arc .swbg{background:#9fb4cf}
+.task.sw-del.sw-go .swbg{background:var(--danger)}
+.task.sw-arc.sw-go .swbg{background:#4f6d94}
+.task.sw-del .sw-r,.task.sw-arc .sw-l{display:none}
+.task.sw-del .swbg{justify-content:flex-start}
+.task.sw-arc .swbg{justify-content:flex-end}
+.toast{display:flex;align-items:center;gap:14px}
+.toast .tact{color:#9cc7ff;font-weight:700;font-size:14px;padding:2px 4px}
+.dtip{font-size:12px;color:var(--muted);margin:18px 10px 0;line-height:1.5}

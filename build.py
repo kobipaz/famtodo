@@ -1,7 +1,9 @@
 # Builds the site into _site/ (run by GitHub Actions on every push)
-import re, json, os, shutil
+import re, json, os, shutil, glob
 os.makedirs('_site', exist_ok=True)
 style = open('src/style.css', encoding='utf-8').read()
+for extra in sorted(glob.glob('src/style-*.css')):
+    style += '\n' + open(extra, encoding='utf-8').read()
 logo = re.sub(r'\s*\n\s*', ' ', open('src/logo.svg', encoding='utf-8').read().strip())
 html = open('src/app.template.html', encoding='utf-8').read().replace('/*@@STYLE@@*/', style).replace('<!--@@LOGO@@-->', logo)
 open('_site/index.html', 'w', encoding='utf-8').write(html)
