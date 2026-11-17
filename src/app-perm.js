@@ -31,3 +31,21 @@ renderList = function () {
 };
 var _addTask = addTask;
 addTask = function () { if (!canAddTo(st.active === 'all' ? st.me.id : st.active)) return toast('רק אורית וקובי מוסיפים משימות כאן'); _addTask(); };
+
+/* "משפחתי": only Kobi & Orit move tasks to/from the archive */
+function canArchive(t) { return canDelete() || !t || t.list !== 'family'; }
+var _doArchive = doArchive;
+doArchive = function (id, on) {
+  var t = find(id);
+  if (!canArchive(t)) { renderList(); toast('ב"משפחתי" רק אורית וקובי מעבירים לארכיון'); return; }
+  _doArchive(id, on);
+};
+var _taskHtml2 = taskHtml;
+taskHtml = function (t) {
+  var h = _taskHtml2(t);
+  if (!canArchive(t)) {
+    h = h.replace(/<button class="btn soft" data-act="(un)?archive"[^>]*>[\s\S]*?<\/button>/, '')
+         .replace(/<span class="sw-r">[\s\S]*?<\/span>/, '<span class="sw-r">🚫 רק אורית וקובי</span>');
+  }
+  return h;
+};

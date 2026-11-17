@@ -43,7 +43,9 @@ service cloud.firestore {
       allow create: if isMember() && request.resource.data.list in lists() && validTask(request.resource.data)
                     && (request.resource.data.list != 'family' || person() in ['kobi', 'orit']);
       allow update: if isMember() && resource.data.list in lists()
-                    && request.resource.data.list == resource.data.list && validTask(request.resource.data);
+                    && request.resource.data.list == resource.data.list && validTask(request.resource.data)
+                    && (resource.data.list != 'family' || person() in ['kobi', 'orit']
+                        || request.resource.data.get('archived', false) == resource.data.get('archived', false));
     }
   }
 }
