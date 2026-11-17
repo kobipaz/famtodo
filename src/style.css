@@ -27,21 +27,16 @@ button{cursor:pointer;border:0;background:none}
 .linkbtn{color:var(--brand);font-weight:600;padding:10px;margin-top:14px}
 
 /* ---------- main ---------- */
-header{position:sticky;top:0;z-index:5;background:rgba(243,247,252,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:calc(10px + env(safe-area-inset-top)) 14px 0}
+header{position:sticky;top:0;z-index:5;background:rgba(243,247,252,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
 .topbar{display:flex;align-items:center;gap:10px}
 .topbar .logo{width:34px;height:34px}
 .topbar .wordmark{font-size:22px;margin:0}
 .topbar .wordmark:after{height:3px;bottom:-3px}
 .topbar .sp{flex:1}
 .iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--card);box-shadow:var(--sh);font-size:17px}
+.burger{position:relative;font-size:20px;font-weight:700}
+.bdg{position:absolute;top:-5px;left:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
 .mebtn{display:flex;align-items:center;gap:6px;padding:4px 4px 4px 10px;border-radius:99px;background:var(--card);box-shadow:var(--sh);font-weight:600;font-size:14px}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 2px 12px;scrollbar-width:none}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:99px;background:var(--card);box-shadow:var(--sh);font-weight:600;font-size:15px;white-space:nowrap;border:2px solid transparent}
-.chip .dot{width:10px;height:10px;border-radius:50%}
-.chip .n{min-width:20px;height:20px;padding:0 6px;border-radius:99px;font-size:12px;display:grid;place-items:center;background:#edf2f8;color:var(--muted)}
-.chip.on{color:#fff}
-.chip.on .n{background:rgba(255,255,255,.28);color:#fff}
 .sep{flex:none;width:1px;background:#d5deea;margin:6px 2px}
 main{flex:1;padding:4px 14px calc(160px + env(safe-area-inset-bottom))}
 .listhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin:6px 4px 12px}
@@ -108,6 +103,21 @@ main{flex:1;padding:4px 14px calc(160px + env(safe-area-inset-bottom))}
 .sheet{position:fixed;inset:0;z-index:30;background:rgba(20,33,61,.35);display:flex;align-items:flex-end;justify-content:center}
 .sheet .panel{background:var(--bg);width:100%;max-width:640px;border-radius:24px 24px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom));max-height:85vh;overflow:auto}
 .sheet h3{margin:0 0 12px;font-size:19px;display:flex;align-items:center;gap:8px}
+.sheet.side{align-items:stretch;justify-content:flex-start}
+.dpanel{background:var(--bg);width:82%;max-width:330px;height:100%;overflow:auto;padding:calc(16px + env(safe-area-inset-top)) 12px 24px;box-shadow:0 0 40px rgba(20,33,61,.25);animation:slidein .18s ease-out}
+@keyframes slidein{from{transform:translateX(100%)}to{transform:none}}
+.dhead{display:flex;align-items:center;gap:10px;margin:0 6px 16px}
+.dhead .logo{width:36px;height:36px}
+.dhead .wordmark{font-size:22px;margin:0}
+.dhead .wordmark:after{height:3px;bottom:-3px}
+.dsec{font-size:13px;font-weight:700;color:var(--muted);margin:16px 10px 6px}
+.drow{display:flex;align-items:center;gap:10px;width:100%;padding:11px 12px;border-radius:14px;background:var(--card);box-shadow:var(--sh);margin-bottom:6px;font-weight:600;font-size:16px;text-align:right}
+.drow .dic{width:24px;display:grid;place-items:center;font-size:18px}
+.drow .dot{width:12px;height:12px;border-radius:50%;display:block}
+.drow .dname{flex:1}
+.drow .n{min-width:22px;height:22px;padding:0 7px;border-radius:99px;font-size:12px;display:grid;place-items:center;background:#edf2f8;color:var(--muted)}
+.drow.on{color:#fff}
+.drow.on .n{background:rgba(255,255,255,.28);color:#fff}
 .demo{background:#fff6dc;color:#7a5a00;font-size:13px;text-align:center;padding:6px 10px;border-radius:10px;margin-top:10px}
 .loading{text-align:center;color:var(--muted);padding:40px}
 .spin{width:26px;height:26px;border:3px solid #d5e2f3;border-top-color:var(--brand);border-radius:50%;animation:sp 0.8s linear infinite;margin:0 auto 10px}
