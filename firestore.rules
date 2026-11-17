@@ -1,5 +1,5 @@
 rules_version = '2';
-// FamToDo — who may read/write what. Mirrors ACCESS in src/app.template.html.
+// FamToDo — who may read/write what. Mirrors ACCESS in src/app.template.html + src/app-perm.js.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null && request.auth.token.email_verified == true; }
@@ -12,7 +12,7 @@ service cloud.firestore {
     function lists() {
       return {
         'kobi':  ['kobi', 'family', 'parents', 'kids', 'orit', 'aviv', 'yuval', 'omer'],
-        'orit':  ['orit', 'family', 'parents', 'kids', 'aviv', 'yuval', 'omer'],
+        'orit':  ['orit', 'family', 'parents', 'kids', 'kobi', 'aviv', 'yuval', 'omer'],
         'aviv':  ['aviv', 'kids', 'family'],
         'yuval': ['yuval', 'kids', 'family'],
         'omer':  ['omer', 'kids', 'family']

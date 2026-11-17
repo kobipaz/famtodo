@@ -49,3 +49,7 @@ taskHtml = function (t) {
   }
   return h;
 };
+
+/* Orit also sees (and can edit) Kobi's personal list — mirrored in firestore.rules */
+if (ACCESS.orit.indexOf('kobi') < 0) ACCESS.orit.splice(ACCESS.orit.indexOf('kids') + 1, 0, 'kobi');
+if (st.me && st.me.id === 'orit') startMain('orit');
