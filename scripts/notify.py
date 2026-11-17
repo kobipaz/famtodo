@@ -3,6 +3,7 @@
  2. Morning reminder (from 07:00)                  -> tasks due today / overdue
  3. After-school reminder (from 14:30)             -> tasks due today / overdue + open tasks without a date
  4. Task with a time (e.g. 15:00) due today        -> reminder at that time to the list's members
+ 5. Recycle bin: tasks deleted more than 14 days ago are removed for good
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
 import os, json, time, datetime
 from zoneinfo import ZoneInfo
@@ -71,7 +72,7 @@ last = state.get('lastNew') or now_ms          # first run: start from now (no f
 per_person = {}
 for d in db.collection('tasks').where('createdAt', '>', last).stream():
     t = d.to_dict()
-    if t.get('archived') or t.get('done'):
+    if t.get('archived') or t.get('done') or t.get('deleted'):
         continue
     creator = t.get('createdBy')
     for r in MEMBERS.get(t.get('list'), []):
@@ -94,7 +95,7 @@ state['lastNew'] = now_ms
 # ---------- 2+3. daily reminders ----------
 def digest(kind):
     open_tasks = [d.to_dict() for d in db.collection('tasks').where('done', '==', False).stream()]
-    open_tasks = [t for t in open_tasks if not t.get('archived')]
+    open_tasks = [t for t in open_tasks if not t.get('archived') and not t.get('deleted')]
     for person in NAMES:
         mine = [t for t in open_tasks if person in MEMBERS.get(t.get('list'), [])]
         due = sorted([t for t in mine if t.get('due') and t['due'] <= today], key=lambda t: t['due'])
@@ -123,7 +124,7 @@ now_min = now.hour * 60 + now.minute
 for d in db.collection('tasks').where('due', '==', today).stream():
     t = d.to_dict()
     tm = t.get('time') or ''
-    if not tm or t.get('done') or t.get('archived'):
+    if not tm or t.get('done') or t.get('archived') or t.get('deleted'):
         continue
     key = today + ' ' + tm
     try:
@@ -137,6 +138,13 @@ for d in db.collection('tasks').where('due', '==', today).stream():
         for r in MEMBERS.get(t.get('list'), []):
             print('time ->', r, push(r, f'⏰ {tm} · {t["title"]}', f'ברשימה: {where}'))
     d.reference.update({'remindedFor': key})
+
+# ---------- 5. empty the recycle bin after 14 days ----------
+TRASH_DAYS = 14
+cutoff = now_ms - TRASH_DAYS * 86400000
+for d in db.collection('tasks').where('deleted', '==', True).stream():
+    if (d.to_dict().get('deletedAt') or 0) < cutoff:
+        d.reference.delete(); print('bin: removed', d.id)
 
 meta_ref.set(state)
 print('done', now.isoformat())

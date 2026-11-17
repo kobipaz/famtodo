@@ -37,6 +37,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /tokens/{tok} {
+      allow create, update: if isMember() && request.resource.data.person == person();
+      allow delete: if isMember() && resource.data.person == person();
+    }
+
     match /tasks/{taskId} {
       allow read: if isMember() && resource.data.list in lists();
       allow delete: if isMember() && resource.data.list in lists() && person() in ['kobi', 'orit'];
@@ -45,7 +50,9 @@ service cloud.firestore {
       allow update: if isMember() && resource.data.list in lists()
                     && request.resource.data.list == resource.data.list && validTask(request.resource.data)
                     && (resource.data.list != 'family' || person() in ['kobi', 'orit']
-                        || request.resource.data.get('archived', false) == resource.data.get('archived', false));
+                        || request.resource.data.get('archived', false) == resource.data.get('archived', false))
+                    && (person() in ['kobi', 'orit']
+                        || request.resource.data.get('deleted', false) == resource.data.get('deleted', false));
     }
   }
 }
