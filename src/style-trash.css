@@ -1,0 +1,4 @@
+.task.bin .binrow{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.task.bin .ttitle{color:var(--muted)}
+.binacts{display:flex;gap:6px;flex:none}
+.binacts .btn{padding:8px 10px;font-size:14px}

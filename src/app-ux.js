@@ -13,10 +13,15 @@ function revealJustAdded() {
   if (!t) return;
   var el = document.querySelector('.task[data-tid="' + t.id + '"]'); if (!el) return;
   st.justAdded = null;
-  setTimeout(function () {
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    el.classList.add('flash'); setTimeout(function () { el.classList.remove('flash'); }, 1700);
-  }, 30);
+  var inp = document.getElementById('newtask'); if (inp && document.activeElement === inp) inp.blur();   // close the phone keyboard
+  var go = function () {
+    var e2 = document.querySelector('.task[data-tid="' + t.id + '"]'); if (!e2) return;
+    var r = e2.getBoundingClientRect(), y = r.top + (window.pageYOffset || document.documentElement.scrollTop) - Math.max(80, (window.innerHeight - r.height) / 3);
+    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    e2.classList.remove('flash'); void e2.offsetWidth; e2.classList.add('flash');
+    setTimeout(function () { e2.classList.remove('flash'); }, 1700);
+  };
+  setTimeout(go, 60); setTimeout(go, 450);          // second pass after the keyboard has closed
 }
 var _renderListU = renderList;
 renderList = function () { _renderListU(); revealJustAdded(); };
