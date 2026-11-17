@@ -266,13 +266,13 @@ function stopMain() {
 
 function renderShell() {
   app.innerHTML =
-    '<header><div class="topbar">' + logo() + wordmark() + '<span class="sp"></span>' +
+    '<header><div class="topbar"><button class="iconbtn burger" data-act="drawer" aria-label="תפריט רשימות">☰<span class="bdg" id="bdg"></span></button>' + logo() + wordmark() + '<span class="sp"></span>' +
     (store.mode === 'demo' ? '<button class="iconbtn" data-act="logout" aria-label="החלפת משתמש" title="החלפת משתמש">⇄</button>' : '') +
     '<button class="mebtn" data-act="panel">' + esc(st.me.name) + av(st.me.id, 'sm') + '</button></div>' +
-    '<div class="chips" id="chips"></div></header>' +
+    '</header>' +
     '<main id="list"></main>' +
     '<form class="addbar" id="addform"><div class="opts" id="opts"></div><div class="in"><input id="newtask" data-keep="new" autocomplete="off" enterkeyhint="send" maxlength="200" placeholder="משימה חדשה…"><button type="submit" aria-label="הוספה">+</button></div></form>' +
-    '<div id="sheet"></div>';
+    '<div id="sheet"></div><div id="drawer"></div>';
   document.getElementById('addform').addEventListener('submit', function (e) { e.preventDefault(); addTask(); });
   renderChips(); renderList(); renderOpts();
 }
@@ -291,23 +291,29 @@ function renderOpts() {
     }).join('') + '<button type="button" class="opt addtopic" data-act="topicsheet">＋ נושא</button>';
 }
 function counts() { var c = {}; st.tasks.forEach(function (t) { if (!t.done) c[t.list] = (c[t.list] || 0) + 1; }); return c; }
+function listRow(l, n) {
+  var on = l.id === st.active;
+  return '<button class="drow ' + (on ? 'on' : '') + '" data-act="list" data-id="' + l.id + '" style="' + (on ? 'background:' + l.color + ';' : '') + '">' +
+    (l.icon ? '<span class="dic">' + l.icon + '</span>' : '<span class="dic"><span class="dot" style="background:' + (on ? '#fff' : l.color) + '"></span></span>') +
+    '<span class="dname">' + esc(l.id === st.me.id ? l.name + ' (שלי)' : l.name) + '</span>' + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
+}
 function renderChips() {
-  var el = document.getElementById('chips'); if (!el) return;
-  var c = counts(), html = '', prev = null;
-  var total = 0; Object.keys(c).forEach(function (k) { total += c[k]; });
-  html += '<button class="chip ' + (st.active === 'all' ? 'on' : '') + '" data-act="list" data-id="all" style="' + (st.active === 'all' ? 'background:' + ALL.color + ';' : '') + '"><span>' + ALL.icon + '</span>' + ALL.name + (total ? '<span class="n">' + total + '</span>' : '') + '</button><span class="sep"></span>';
-  st.lists.forEach(function (id, i) {
-    var l = L[id], grp = l.personal ? (id === st.me.id ? 'me' : 'p') : 'g';
-    if (i > 0 && prev !== grp) html += '<span class="sep"></span>';
-    prev = grp;
-    var on = id === st.active;
-    html += '<button class="chip ' + (on ? 'on' : '') + '" data-act="list" data-id="' + id + '" style="' + (on ? 'background:' + l.color + ';' : '') + '">' +
-      (l.icon ? '<span>' + l.icon + '</span>' : '<span class="dot" style="background:' + (on ? '#fff' : l.color) + '"></span>') +
-      esc(l.name) + (c[id] ? '<span class="n">' + c[id] + '</span>' : '') + '</button>';
-  });
-  el.innerHTML = html;
-  var a = el.querySelector('.on'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  var c = counts(), total = 0;
+  Object.keys(c).forEach(function (k) { total += c[k]; });
+  var b = document.getElementById('bdg'); if (b) { b.textContent = total || ''; b.style.display = total ? '' : 'none'; }
   document.documentElement.style.setProperty('--accent', L[st.active].color);
+  var el = document.getElementById('drawer'); if (!el) return;
+  if (!st.drawer) { el.innerHTML = ''; return; }
+  var own = st.lists.filter(function (id) { return id === st.me.id; }),
+      groups = st.lists.filter(function (id) { return !L[id].personal; }),
+      others = st.lists.filter(function (id) { return L[id].personal && id !== st.me.id; });
+  var h = '<div class="sheet side" data-act="closedrawer"><div class="dpanel" data-stop="1">' +
+    '<div class="dhead">' + logo() + wordmark() + '</div>' + listRow(ALL, total) +
+    '<div class="dsec">שלי</div>' + own.map(function (id) { return listRow(L[id], c[id]); }).join('') +
+    '<div class="dsec">קבוצות</div>' + groups.map(function (id) { return listRow(L[id], c[id]); }).join('') +
+    (others.length ? '<div class="dsec">בני המשפחה</div>' + others.map(function (id) { return listRow(L[id], c[id]); }).join('') : '') +
+    '</div></div>';
+  el.innerHTML = h;
 }
 function keepInputs() {
   var keep = {}, f = document.activeElement, focus = null;
@@ -452,7 +458,7 @@ function signOut() {
 
 app.addEventListener('click', function (e) {
   var b = e.target.closest('[data-act]'); if (!b) return;
-  if (/^close(panel|sheet)$/.test(b.getAttribute('data-act')) && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
+  if (/^close(panel|sheet|drawer)$/.test(b.getAttribute('data-act')) && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
   var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), t;
   switch (act) {
     case 'google':
@@ -464,7 +470,9 @@ app.addEventListener('click', function (e) {
       });
       break;
     case 'demo': LS.set('demo_me', id); st.email = ''; startMain(id); break;
-    case 'list': st.active = id; st.open = null; st.editing = null; LS.set('list_' + st.me.id, id); renderChips(); renderList(); window.scrollTo(0, 0); break;
+    case 'drawer': st.drawer = true; renderChips(); break;
+    case 'closedrawer': st.drawer = false; renderChips(); break;
+    case 'list': st.drawer = false; st.active = id; st.open = null; st.editing = null; LS.set('list_' + st.me.id, id); renderChips(); renderList(); window.scrollTo(0, 0); break;
     case 'toggle':
       t = find(id); if (!t) return;
       var nd = !t.done;
