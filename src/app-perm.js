@@ -16,3 +16,18 @@ taskHtml = function (t) {
   }
   return h;
 };
+
+/* "משפחתי": everyone sees it, only Kobi & Orit add tasks there */
+var PARENT_ONLY_ADD = ['family'];
+function canAddTo(listId) { return canDelete() || PARENT_ONLY_ADD.indexOf(listId) < 0; }
+var _renderList = renderList;
+renderList = function () {
+  _renderList();
+  if (!st.me || st.active === 'archive') return;
+  var af = document.getElementById('addform'), el = document.getElementById('list');
+  var blocked = !canAddTo(st.active);
+  if (af) af.style.display = blocked ? 'none' : '';
+  if (blocked && el && st.loaded) el.insertAdjacentHTML('beforeend', '<div class="demo" style="background:#eef4fd;color:#3b5b85">👀 כאן רק אורית וקובי מוסיפים משימות. אפשר לסמן "בוצע" ולהוסיף הערות.</div>');
+};
+var _addTask = addTask;
+addTask = function () { if (!canAddTo(st.active === 'all' ? st.me.id : st.active)) return toast('רק אורית וקובי מוסיפים משימות כאן'); _addTask(); };
