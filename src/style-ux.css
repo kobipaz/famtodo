@@ -1,2 +1,4 @@
 .task.flash{animation:flashin 1.6s ease-out}
 @keyframes flashin{0%{box-shadow:0 0 0 3px var(--accent),var(--sh);transform:scale(1.02)}40%{box-shadow:0 0 0 3px var(--accent),var(--sh);transform:none}100%{box-shadow:var(--sh)}}
+.addbar .in button.xclear{width:38px;height:46px;background:transparent;color:var(--muted);font-size:20px;font-weight:600;border-radius:12px}
+.addbar .in button.xclear:active{background:var(--bg)}
