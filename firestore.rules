@@ -29,6 +29,14 @@ service cloud.firestore {
         && (request.method == 'delete' || request.resource.data.person in ['kobi', 'orit', 'aviv', 'yuval', 'omer']);
     }
 
+    match /topics/{topicId} {
+      allow read: if isMember();
+      allow create: if isMember() && request.resource.data.name is string
+                    && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 24
+                    && request.resource.data.icon is string && request.resource.data.icon.size() <= 16;
+      allow delete: if isAdmin();
+    }
+
     match /tasks/{taskId} {
       allow read, delete: if isMember() && resource.data.list in lists();
       allow create: if isMember() && request.resource.data.list in lists() && validTask(request.resource.data);
