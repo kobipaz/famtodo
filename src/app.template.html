@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>FamToDo</title>
+<meta name="theme-color" content="#f3f7fc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FamToDo">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>/*@@STYLE@@*/</style>
+<script src="config.js"></script>
+</head>
+<body>
+<div id="app"><div class="loading" style="padding-top:30vh"><div class="spin"></div>טוען…</div></div>
+<script>
+/* ======================================================================
+   FamToDo — family tasks. Firebase (Google sign-in + Firestore) when
+   config.js defines window.FAMTODO_CONFIG; otherwise a local demo.
+   ====================================================================== */
+var CFG = window.FAMTODO_CONFIG || null;
+var OWNER_EMAIL = ((CFG && CFG.ownerEmail) || 'kobipaz.music@gmail.com').toLowerCase();
+
+var PEOPLE = [
+  { id: 'kobi',  name: 'קובי',  color: '#2f86f2', admin: true },
+  { id: 'orit',  name: 'אורית', color: '#ec5b95' },
+  { id: 'aviv',  name: 'אביב',  color: '#e9a90f' },
+  { id: 'yuval', name: 'יובל',  color: '#3fbf4f' },
+  { id: 'omer',  name: 'עומר',  color: '#7c5cf0' }
+];
+var LISTS = PEOPLE.map(function (p) { return { id: p.id, name: p.name, color: p.color, members: [p.id], personal: true }; }).concat([
+  { id: 'family',  name: 'משפחתי',      color: '#1f7cf0', members: ['kobi', 'orit', 'aviv', 'yuval', 'omer'], icon: '🏠' },
+  { id: 'parents', name: 'אורית וקובי', color: '#d9467e', members: ['kobi', 'orit'], icon: '💑' },
+  { id: 'kids',    name: 'ילדים',       color: '#f08a1c', members: ['aviv', 'yuval', 'omer'], icon: '🧒' }
+]);
+/* Who can see & edit which lists — the SAME table is enforced in firestore.rules */
+var ACCESS = {
+  kobi:  ['kobi', 'family', 'parents', 'kids', 'orit', 'aviv', 'yuval', 'omer'],
+  orit:  ['orit', 'family', 'parents', 'kids', 'aviv', 'yuval', 'omer'],
+  aviv:  ['aviv', 'kids', 'family'],
+  yuval: ['yuval', 'kids', 'family'],
+  omer:  ['omer', 'kids', 'family']
+};
+var P = {}; PEOPLE.forEach(function (p) { P[p.id] = p; });
+var L = {}; LISTS.forEach(function (l) { L[l.id] = l; });
+
+/* ---------------- small helpers ---------------- */
+var LS = {
+  get: function (k) { try { return localStorage.getItem('famtodo_' + k); } catch (e) { return null; } },
+  set: function (k, v) { try { localStorage.setItem('famtodo_' + k, v); } catch (e) {} },
+  del: function (k) { try { localStorage.removeItem('famtodo_' + k); } catch (e) {} }
+};
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function clean(s, max) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, max); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 9); }
+function av(id, cls) { var p = P[id] || { name: '?', color: '#9aa7b8' }; return '<span class="av ' + (cls || '') + '" style="background:' + p.color + '">' + esc(p.name[0]) + '</span>'; }
+function when(ts) {
+  if (!ts) return '';
+  var d = new Date(ts), now = new Date();
+  var t = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === now.toDateString()) return 'היום ' + t;
+  var y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'אתמול ' + t;
+  return d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' }) + ' ' + t;
+}
+var toastT;
+function toast(m) {
+  var el = document.querySelector('.toast');
+  if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = m; el.classList.remove('hidden'); clearTimeout(toastT);
+  toastT = setTimeout(function () { el.classList.add('hidden'); }, 3000);
+}
+var LOGO = '<!--@@LOGO@@-->';
+function logo() { return LOGO.replace('<svg', '<svg class="logo"'); }
+function wordmark() { return '<div class="wordmark">Fam<b>ToDo</b></div>'; }
+var GICON = '<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z"/></svg>';
+
+/* ======================================================================
+   Stores — same interface for Firebase and demo
+   ====================================================================== */
+function makeDemoStore() {
+  var subs = [];
+  function read(k) { try { return JSON.parse(LS.get('demo_' + k) || 'null'); } catch (e) { return null; } }
+  function write(k, v) { LS.set('demo_' + k, JSON.stringify(v)); subs.forEach(function (f) { f(); }); }
+  var tasks = function () { return read('tasks') || []; };
+  var members = function () { return read('members') || {}; };
+  return {
+    mode: 'demo',
+    signIn: function () { return Promise.reject(new Error('demo')); },
+    signOut: function () { LS.del('demo_me'); return Promise.resolve(); },
+    subscribeTasks: function (lists, cb) {
+      var f = function () { cb(tasks().filter(function (t) { return lists.indexOf(t.list) >= 0; })); };
+      subs.push(f); setTimeout(f, 50);
+      return function () { subs = subs.filter(function (x) { return x !== f; }); };
+    },
+    add: function (t) { var a = tasks(); t.id = uid(); a.push(t); write('tasks', a); return Promise.resolve(); },
+    update: function (id, patch) { var a = tasks(); a.forEach(function (t) { if (t.id === id) Object.assign(t, patch); }); write('tasks', a); return Promise.resolve(); },
+    remove: function (id) { write('tasks', tasks().filter(function (t) { return t.id !== id; })); return Promise.resolve(); },
+    addNote: function (id, n) { var a = tasks(); a.forEach(function (t) { if (t.id === id) (t.notes = t.notes || []).push(n); }); write('tasks', a); return Promise.resolve(); },
+    subscribeMembers: function (cb) {
+      var f = function () { var m = members(), out = []; Object.keys(m).forEach(function (e) { out.push({ email: e, person: m[e] }); }); cb(out); };
+      subs.push(f); setTimeout(f, 30);
+      return function () { subs = subs.filter(function (x) { return x !== f; }); };
+    },
+    addMember: function (email, person) { var m = members(); m[email] = person; write('members', m); return Promise.resolve(); },
+    removeMember: function (email) { var m = members(); delete m[email]; write('members', m); return Promise.resolve(); }
+  };
+}
+
+function makeFirebaseStore(cfg) {
+  var V = '10.14.1', base = 'https://www.gstatic.com/firebasejs/' + V + '/';
+  return Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')]).then(function (m) {
+    var A = m[0], AU = m[1], F = m[2];
+    var app = A.initializeApp(cfg.firebase);
+    var auth = AU.getAuth(app);
+    var db;
+    try { db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) }); }
+    catch (e) { db = F.getFirestore(app); }
+    var col = F.collection(db, 'tasks');
+    var store = {
+      mode: 'cloud',
+      onAuth: function (cb) { return AU.onAuthStateChanged(auth, cb); },
+      signIn: function () {
+        var prov = new AU.GoogleAuthProvider();
+        prov.setCustomParameters({ prompt: 'select_account' });
+        return AU.signInWithPopup(auth, prov).catch(function (e) {
+          if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) return AU.signInWithRedirect(auth, prov);
+          throw e;
+        });
+      },
+      signOut: function () { return AU.signOut(auth); },
+      personFor: function (email) {
+        if (email === OWNER_EMAIL) return Promise.resolve('kobi');
+        return F.getDoc(F.doc(db, 'members', email)).then(function (s) { return s.exists() ? s.data().person : null; });
+      },
+      subscribeTasks: function (lists, cb, onErr) {
+        return F.onSnapshot(F.query(col, F.where('list', 'in', lists)), function (snap) {
+          cb(snap.docs.map(function (d) { var x = d.data(); x.id = d.id; return x; }));
+        }, onErr);
+      },
+      add: function (t) { return F.addDoc(col, t); },
+      update: function (id, patch) { return F.updateDoc(F.doc(db, 'tasks', id), patch); },
+      remove: function (id) { return F.deleteDoc(F.doc(db, 'tasks', id)); },
+      addNote: function (id, n) { return F.updateDoc(F.doc(db, 'tasks', id), { notes: F.arrayUnion(n) }); },
+      subscribeMembers: function (cb, onErr) {
+        return F.onSnapshot(F.collection(db, 'members'), function (snap) {
+          cb(snap.docs.map(function (d) { return { email: d.id, person: d.data().person }; }));
+        }, onErr);
+      },
+      addMember: function (email, person) { return F.setDoc(F.doc(db, 'members', email), { person: person, addedAt: Date.now() }); },
+      removeMember: function (email) { return F.deleteDoc(F.doc(db, 'members', email)); }
+    };
+    return store;
+  });
+}
+
+/* ======================================================================
+   App state & rendering
+   ====================================================================== */
+var app = document.getElementById('app');
+var store = null;
+var st = { screen: 'boot', me: null, email: '', lists: [], active: null, tasks: [], loaded: false,
+           open: null, editing: null, sure: null, panel: false, members: [], unsubTasks: null, unsubMembers: null };
+
+function renderLogin(err, busy) {
+  var demo = store.mode === 'demo';
+  var h = '<div class="login">' + logo() + wordmark() + '<h2>המשימות של המשפחה, במקום אחד</h2>';
+  h += '<button class="gbtn" data-act="google"' + (demo || busy ? ' disabled' : '') + '>' + GICON + (busy ? 'מתחבר…' : 'כניסה עם Google') + '</button>';
+  if (err) h += '<div class="errbox">' + err + '</div>';
+  if (demo) {
+    h += '<div class="demohint">מצב הדגמה — בחרו מי נכנס (בלי סיסמה):</div><div class="people">' +
+      PEOPLE.map(function (p) { return '<button class="person" data-act="demo" data-id="' + p.id + '">' + av(p.id) + '<span>' + esc(p.name) + '</span></button>'; }).join('') +
+      '</div><div class="demo">הנתונים בהדגמה נשמרים רק במכשיר הזה</div>';
+  } else {
+    h += '<div class="note-s">נכנסים עם חשבון ה-Google האישי. רק מיילים שקובי אישר יכולים להיכנס.</div>';
+  }
+  app.innerHTML = h + '</div>';
+}
+
+function startMain(person) {
+  st.me = P[person]; st.lists = ACCESS[person].slice();
+  var saved = LS.get('list_' + person);
+  st.active = st.lists.indexOf(saved) >= 0 ? saved : st.lists[0];
+  st.screen = 'main'; st.loaded = false; st.open = null; st.tasks = [];
+  renderShell();
+  if (st.unsubTasks) st.unsubTasks();
+  var timer = setTimeout(function () { if (!st.loaded) toast('הטעינה איטית… בדקו חיבור לאינטרנט'); }, 10000);
+  st.unsubTasks = store.subscribeTasks(st.lists, function (tasks) {
+    clearTimeout(timer);
+    st.tasks = tasks; st.loaded = true; renderChips(); renderList();
+  }, function (e) { clearTimeout(timer); toast('שגיאה בטעינה: ' + (e.code || e.message)); });
+}
+function stopMain() {
+  if (st.unsubTasks) st.unsubTasks(); st.unsubTasks = null;
+  if (st.unsubMembers) st.unsubMembers(); st.unsubMembers = null;
+  st.me = null; st.panel = false; st.tasks = [];
+}
+
+function renderShell() {
+  app.innerHTML =
+    '<header><div class="topbar">' + logo() + wordmark() + '<span class="sp"></span>' +
+    '<button class="mebtn" data-act="panel">' + esc(st.me.name) + av(st.me.id, 'sm') + '</button></div>' +
+    '<div class="chips" id="chips"></div></header>' +
+    '<main id="list"></main>' +
+    '<form class="addbar" id="addform"><div class="in"><input id="newtask" data-keep="new" autocomplete="off" enterkeyhint="send" maxlength="200" placeholder="משימה חדשה…"><button type="submit" aria-label="הוספה">+</button></div></form>' +
+    '<div id="sheet"></div>';
+  document.getElementById('addform').addEventListener('submit', function (e) { e.preventDefault(); addTask(); });
+  renderChips(); renderList();
+}
+function counts() { var c = {}; st.tasks.forEach(function (t) { if (!t.done) c[t.list] = (c[t.list] || 0) + 1; }); return c; }
+function renderChips() {
+  var el = document.getElementById('chips'); if (!el) return;
+  var c = counts(), html = '', prev = null;
+  st.lists.forEach(function (id, i) {
+    var l = L[id], grp = l.personal ? (id === st.me.id ? 'me' : 'p') : 'g';
+    if (i > 0 && prev !== grp) html += '<span class="sep"></span>';
+    prev = grp;
+    var on = id === st.active;
+    html += '<button class="chip ' + (on ? 'on' : '') + '" data-act="list" data-id="' + id + '" style="' + (on ? 'background:' + l.color + ';' : '') + '">' +
+      (l.icon ? '<span>' + l.icon + '</span>' : '<span class="dot" style="background:' + (on ? '#fff' : l.color) + '"></span>') +
+      esc(l.name) + (c[id] ? '<span class="n">' + c[id] + '</span>' : '') + '</button>';
+  });
+  el.innerHTML = html;
+  var a = el.querySelector('.on'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  document.documentElement.style.setProperty('--accent', L[st.active].color);
+}
+function keepInputs() {
+  var keep = {}, f = document.activeElement, focus = null;
+  document.querySelectorAll('[data-keep]').forEach(function (i) { keep[i.getAttribute('data-keep')] = i.value; });
+  if (f && f.getAttribute && f.getAttribute('data-keep')) focus = { k: f.getAttribute('data-keep'), s: f.selectionStart, e: f.selectionEnd };
+  return function () {
+    document.querySelectorAll('[data-keep]').forEach(function (i) { var k = i.getAttribute('data-keep'); if (keep[k] != null) i.value = keep[k]; });
+    if (focus) { var i = document.querySelector('[data-keep="' + focus.k + '"]'); if (i) { i.focus(); try { i.setSelectionRange(focus.s, focus.e); } catch (e) {} } }
+  };
+}
+function taskHtml(t) {
+  var open = st.open === t.id, n = (t.notes || []).length;
+  var by = t.createdBy && t.createdBy !== t.list ? av(t.createdBy, 'xs') + ' ' + esc((P[t.createdBy] || {}).name || '') + ' · ' : av(t.createdBy, 'xs') + ' ';
+  var meta = t.done
+    ? '<span class="who">✓ ' + av(t.doneBy, 'xs') + ' ' + esc((P[t.doneBy] || {}).name || '') + ' · ' + when(t.doneAt) + '</span>'
+    : '<span class="who">' + by + when(t.createdAt) + '</span>';
+  var h = '<div class="task ' + (t.done ? 'done' : '') + '"><div class="trow">' +
+    '<button class="check" data-act="toggle" data-id="' + t.id + '" aria-label="סימון">' + (t.done ? '✓' : '') + '</button>' +
+    '<div class="tbody" data-act="open" data-id="' + t.id + '"><div class="ttitle">' + esc(t.title) + '</div>' +
+    '<div class="tmeta">' + meta + (n ? '<span class="badge">💬 ' + n + '</span>' : '') + '</div></div></div>';
+  if (open) {
+    h += '<div class="details">';
+    (t.notes || []).forEach(function (no) {
+      h += '<div class="note">' + av(no.by, 'sm') + '<div class="bubble"><div class="h">' + esc((P[no.by] || {}).name || '') + ' · ' + when(no.at) + '</div><div class="t">' + esc(no.text) + '</div></div></div>';
+    });
+    h += '<div class="row"><input class="inp" data-keep="note-' + t.id + '" id="note-' + t.id + '" placeholder="הוספת הערה…" maxlength="500" enterkeyhint="send" data-enter="note" data-id="' + t.id + '">' +
+      '<button class="btn" data-act="note" data-id="' + t.id + '">שליחה</button></div>';
+    if (st.editing === t.id) {
+      h += '<div class="row" style="margin-top:10px"><input class="inp" data-keep="edit-' + t.id + '" id="edit-' + t.id + '" value="' + esc(t.title) + '" maxlength="200" data-enter="save" data-id="' + t.id + '">' +
+        '<button class="btn" data-act="save" data-id="' + t.id + '">שמירה</button></div>';
+    }
+    h += '<div class="actions">' +
+      (st.editing === t.id ? '' : '<button class="btn soft" data-act="edit" data-id="' + t.id + '">✏️ עריכה</button>') +
+      '<button class="btn danger ' + (st.sure === t.id ? 'sure' : '') + '" data-act="del" data-id="' + t.id + '">' + (st.sure === t.id ? 'בטוח? לחצו שוב' : '🗑 מחיקה') + '</button>' +
+      '</div></div>';
+  }
+  return h + '</div>';
+}
+function listSubtitle(l) {
+  if (l.personal) return l.id === st.me.id ? 'המשימות שלי' : 'הרשימה של ' + esc(l.name);
+  return l.members.map(function (m) { return P[m].name; }).join(' · ');
+}
+function renderList() {
+  var el = document.getElementById('list'); if (!el) return;
+  var restore = keepInputs();
+  var l = L[st.active];
+  var ts = st.tasks.filter(function (t) { return t.list === st.active; });
+  var open = ts.filter(function (t) { return !t.done; }).sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0); });
+  var done = ts.filter(function (t) { return t.done; }).sort(function (a, b) { return (b.doneAt || 0) - (a.doneAt || 0); });
+  var html = '<div class="listhead"><h1>' + (l.icon ? l.icon + ' ' : '') + esc(l.name) + '</h1><small>' + listSubtitle(l) + '</small></div>';
+  if (!st.loaded) html += '<div class="loading"><div class="spin"></div>טוען משימות…</div>';
+  else if (!ts.length) html += '<div class="empty"><div class="big">🎉</div>אין משימות כאן.<br>אפשר להוסיף משימה למטה.</div>';
+  else {
+    html += open.map(taskHtml).join('');
+    if (!open.length) html += '<div class="empty" style="padding:20px">הכל בוצע! 👏</div>';
+    if (done.length) html += '<div class="donehdr">בוצעו (' + done.length + ')</div>' + done.slice(0, 30).map(taskHtml).join('');
+  }
+  if (store.mode === 'demo') html += '<div class="demo">מצב הדגמה — הנתונים נשמרים רק במכשיר הזה</div>';
+  el.innerHTML = html;
+  restore();
+  document.getElementById('newtask').placeholder = 'משימה חדשה ל' + (l.personal && l.id === st.me.id ? 'רשימה שלי' : l.name) + '…';
+}
+
+/* ---------------- side panel (profile + admin) ---------------- */
+function renderPanel() {
+  var el = document.getElementById('sheet'); if (!el) return;
+  if (!st.panel) { el.innerHTML = ''; return; }
+  var h = '<div class="sheet" data-act="closepanel"><div class="panel" data-stop="1"><h3>' + av(st.me.id, 'sm') + ' ' + esc(st.me.name) +
+    (st.email ? '<small style="color:var(--muted);font-weight:400;font-size:13px;direction:ltr">' + esc(st.email) + '</small>' : '') + '</h3>';
+  if (st.me.admin) {
+    h += '<div style="color:var(--muted);margin:4px 0 12px;line-height:1.5">ניהול כניסה: המיילים שמורשים להיכנס, לכל אחד מבני המשפחה. אפשר כמה מיילים לאדם.</div>';
+    PEOPLE.forEach(function (p) {
+      var mails = st.members.filter(function (m) { return m.person === p.id; });
+      h += '<div class="pgroup"><div class="ph">' + av(p.id, 'sm') + esc(p.name) + '</div>';
+      if (p.id === 'kobi') h += '<div class="mail owner"><span>' + esc(OWNER_EMAIL) + '</span><small style="color:var(--muted)">מנהל</small></div>';
+      mails.forEach(function (m) {
+        var key = 'mail-' + m.email;
+        h += '<div class="mail"><span>' + esc(m.email) + '</span><button data-act="rmmail" data-id="' + esc(m.email) + '">' + (st.sure === key ? 'להסיר?' : 'הסרה') + '</button></div>';
+      });
+      if (!mails.length && p.id !== 'kobi') h += '<div style="color:var(--muted);font-size:14px;margin:0 4px 6px">עוד אין מייל — לא יכול/ה להיכנס</div>';
+      h += '<div class="addmail"><input class="inp" type="email" inputmode="email" autocapitalize="off" autocorrect="off" placeholder="name@gmail.com" data-keep="mail-' + p.id + '" id="mail-' + p.id + '" data-enter="addmail" data-id="' + p.id + '"><button class="btn soft" data-act="addmail" data-id="' + p.id + '">הוספה</button></div></div>';
+    });
+  }
+  h += '<div class="actions"><button class="btn danger" data-act="logout" style="flex:1">יציאה</button><button class="btn soft" data-act="closepanel" style="flex:1">סגירה</button></div></div></div>';
+  var restore = keepInputs();
+  el.innerHTML = h;
+  restore();
+}
+
+/* ---------------- actions ---------------- */
+function fail(e) { console.error(e); toast('לא נשמר: ' + ((e && (e.code || e.message)) || e)); }
+function addTask() {
+  var i = document.getElementById('newtask'), v = clean(i.value, 200); if (!v) return;
+  i.value = ''; i.focus();
+  store.add({ list: st.active, title: v, done: false, createdBy: st.me.id, createdAt: Date.now(), doneBy: '', doneAt: 0, notes: [] }).catch(fail);
+}
+function find(id) { return st.tasks.filter(function (t) { return t.id === id; })[0]; }
+var sureT;
+function askSure(key) { st.sure = key; clearTimeout(sureT); sureT = setTimeout(function () { st.sure = null; renderList(); renderPanel(); }, 3500); }
+function signOut() {
+  stopMain(); LS.del('demo_me');
+  store.signOut().then(function () { st.screen = 'login'; renderLogin(); });
+}
+
+app.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.getAttribute('data-act') === 'closepanel' && e.target.closest('[data-stop]') && !e.target.closest('button')) return;
+  var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), t;
+  switch (act) {
+    case 'google':
+      renderLogin('', true);
+      store.signIn().catch(function (er) {
+        var c = er && er.code;
+        if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') return renderLogin();
+        renderLogin('הכניסה נכשלה: ' + esc(c || er.message));
+      });
+      break;
+    case 'demo': LS.set('demo_me', id); st.email = ''; startMain(id); break;
+    case 'list': st.active = id; st.open = null; st.editing = null; LS.set('list_' + st.me.id, id); renderChips(); renderList(); window.scrollTo(0, 0); break;
+    case 'toggle':
+      t = find(id); if (!t) return;
+      var nd = !t.done;
+      t.done = nd; t.doneBy = nd ? st.me.id : ''; t.doneAt = nd ? Date.now() : 0; renderChips(); renderList();
+      store.update(id, { done: nd, doneBy: t.doneBy, doneAt: t.doneAt }).catch(fail); break;
+    case 'open': st.open = st.open === id ? null : id; st.editing = null; renderList(); break;
+    case 'edit': st.editing = id; renderList(); var ei = document.getElementById('edit-' + id); if (ei) ei.focus(); break;
+    case 'save':
+      var v = clean((document.getElementById('edit-' + id) || {}).value, 200); if (!v) return;
+      st.editing = null; store.update(id, { title: v }).catch(fail); renderList(); break;
+    case 'note':
+      var ni = document.getElementById('note-' + id), txt = ni ? clean(ni.value, 500) : '';
+      if (!txt) return; ni.value = '';
+      store.addNote(id, { by: st.me.id, text: txt, at: Date.now() }).catch(fail); break;
+    case 'del':
+      if (st.sure !== id) { askSure(id); renderList(); return; }
+      st.sure = null; st.open = null; store.remove(id).then(function () { toast('המשימה נמחקה'); }).catch(fail); break;
+    case 'panel':
+      st.panel = true; renderPanel();
+      if (st.me.admin && !st.unsubMembers) st.unsubMembers = store.subscribeMembers(function (m) { st.members = m; renderPanel(); }, fail);
+      break;
+    case 'closepanel': st.panel = false; renderPanel(); break;
+    case 'logout': signOut(); break;
+    case 'addmail':
+      var mi = document.getElementById('mail-' + id), em = mi ? mi.value.trim().toLowerCase() : '';
+      if (!/^[^\s@\/]+@[^\s@\/]+\.[^\s@\/]+$/.test(em)) return toast('כתובת מייל לא תקינה');
+      if (em === OWNER_EMAIL) return toast('זה המייל של המנהל');
+      var other = st.members.filter(function (m) { return m.email === em; })[0];
+      if (other && other.person !== id) return toast('המייל כבר משויך ל' + P[other.person].name);
+      mi.value = '';
+      store.addMember(em, id).then(function () { toast(P[id].name + ' יוכל/תוכל להיכנס עם ' + em); }).catch(fail); break;
+    case 'rmmail':
+      if (st.sure !== 'mail-' + id) { askSure('mail-' + id); renderPanel(); return; }
+      st.sure = null; store.removeMember(id).catch(fail); break;
+  }
+});
+app.addEventListener('keydown', function (e) {
+  if (e.key !== 'Enter') return;
+  var t = e.target.getAttribute && e.target.getAttribute('data-enter'); if (!t) return;
+  e.preventDefault();
+  var b = document.querySelector('[data-act="' + t + '"][data-id="' + e.target.getAttribute('data-id') + '"]'); if (b) b.click();
+});
+
+/* ---------------- boot ---------------- */
+(function boot() {
+  if (!CFG || !CFG.firebase) {
+    store = makeDemoStore();
+    var me = LS.get('demo_me');
+    if (me && P[me]) startMain(me); else { st.screen = 'login'; renderLogin(); }
+    return;
+  }
+  makeFirebaseStore(CFG).then(function (s) {
+    store = s;
+    s.onAuth(function (user) {
+      if (!user) { stopMain(); st.screen = 'login'; return renderLogin(); }
+      var email = (user.email || '').toLowerCase();
+      st.email = email;
+      s.personFor(email).then(function (person) {
+        if (!person || !ACCESS[person]) {
+          stopMain();
+          return renderLogin('המייל <b dir="ltr">' + esc(email) + '</b> עוד לא מורשה.<br>בקשו מקובי להוסיף אותו בהגדרות, ואז נסו שוב.<br><button class="linkbtn" data-act="logout">כניסה עם חשבון אחר</button>');
+        }
+        if (st.me && st.me.id === person) return;
+        startMain(person);
+      }).catch(function (e) { renderLogin('שגיאה בבדיקת הרשאה: ' + esc(e.code || e.message)); });
+    });
+  }).catch(function (e) {
+    app.innerHTML = '<div class="login">' + logo() + '<div class="errbox">לא הצלחתי לטעון את האפליקציה. בדקו חיבור לאינטרנט ונסו שוב.<br><small>' + esc(e.message) + '</small></div></div>';
+  });
+})();
+</script>
+</body>
+</html>
