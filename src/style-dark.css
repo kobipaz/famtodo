@@ -1,0 +1,32 @@
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);padding:10px 12px;border-radius:14px;box-shadow:var(--sh);margin:16px 0 4px;font-weight:600}
+html.dark{color-scheme:dark;--bg:#0f1624;--card:#1a2334;--ink:#e7edf7;--muted:#95a3b8;--line:#2b3649;--sh:0 1px 2px rgba(0,0,0,.35),0 6px 20px rgba(0,0,0,.25)}
+html.dark header{background:rgba(15,22,36,.92)}
+html.dark .addbar{background:linear-gradient(to top,var(--bg) 70%,rgba(15,22,36,0))}
+html.dark .addbar .in{box-shadow:0 6px 26px rgba(0,0,0,.45)}
+html.dark .inp,html.dark .gbtn{background:var(--card);border-color:var(--line);color:var(--ink)}
+html.dark .seg{background:#232f44}
+html.dark .seg button.on{background:#37465f;color:var(--ink)}
+html.dark .details{background:#161f2e}
+html.dark .note .bubble{background:var(--card);border-color:var(--line)}
+html.dark .btn.soft{background:#26324a;color:var(--ink)}
+html.dark .btn.danger{background:#3b2026;color:#ff8f94}
+html.dark .btn.danger.sure{background:var(--danger);color:#fff}
+html.dark .badge{background:#1c2e4a;color:#8fbaff}
+html.dark .due,html.dark .topic{background:#26324a;color:#b9c6d9}
+html.dark .due.late{background:#3b2026;color:#ff8f94}
+html.dark .due.today{background:#3b3017;color:#f5c463}
+html.dark .due.soon{background:#16352a;color:#72d99a}
+html.dark button.topic.none{background:transparent;border-color:#3b4860;color:#8494ac}
+html.dark .tsec span,html.dark .drow .n{background:#26324a;color:var(--muted)}
+html.dark .check{border-color:#4b5a73}
+html.dark .tbtn.add,html.dark .opt.addtopic{background:#1c2e4a;border-color:#35507a;color:#8fbaff}
+html.dark .emo.on{background:#1c2e4a}
+html.dark .demo{background:#3a3218;color:#f0d68e}
+html.dark .errbox{background:#3b2026;color:#ffb4b7}
+html.dark .toast{background:#2c3b57}
+html.dark .sheet{background:rgba(0,0,0,.55)}
+html.dark .donehdr:after{background:var(--line)}
+html.dark .sep{background:var(--line)}
+html.dark .wordmark{color:var(--ink)}
+html.dark .wordmark b{color:#5aa2ff}
+html.dark .login .logo{filter:drop-shadow(0 10px 24px rgba(0,0,0,.45))}
