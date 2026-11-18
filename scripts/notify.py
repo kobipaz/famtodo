@@ -37,7 +37,7 @@ def push(person, title, body):
     msgs = [messaging.Message(
         token=d.id,
         webpush=messaging.WebpushConfig(
-            notification=messaging.WebpushNotification(title=title, body=body, icon=ICON, badge=ICON, lang='he', dir='rtl'),
+            notification=messaging.WebpushNotification(title=title, body=body, icon=ICON, badge=ICON, language='he', direction='rtl'),
             fcm_options=messaging.WebpushFCMOptions(link=APP_URL)))
         for d in docs]
     res = messaging.send_each(msgs)
