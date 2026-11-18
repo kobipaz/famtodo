@@ -1,0 +1,15 @@
+.opt.pill{background:#eef2f7;box-shadow:none;color:#2f6fd6;padding:8px 13px;font-size:15px}
+.opt.pill.on{background:#2f6fd6;color:#fff}
+.whenp{display:inline-flex;gap:5px;flex-wrap:wrap;vertical-align:middle}
+.whenp .wp{border:0;cursor:pointer;font-size:13px;font-weight:600;padding:3px 9px;border-radius:99px;background:#eef2f7;color:#2f6fd6;line-height:1.5}
+.whenp .wp.today{background:#e6f4ea;color:#1e7b3a}
+.whenp .wp.late{background:#fde8e8;color:#c62828}
+.whenp .wp.empty{color:#9aa7b8;padding:3px 8px}
+.dman{cursor:pointer;position:relative}
+.dman input{flex:none;width:150px}
+html.dark .opt.pill{background:#1c2e4a;color:#8fbaff}
+html.dark .opt.pill.on{background:#3d7be0;color:#fff}
+html.dark .whenp .wp{background:#1c2e4a;color:#8fbaff}
+html.dark .whenp .wp.today{background:#163a24;color:#7fd99a}
+html.dark .whenp .wp.late{background:#4a1c1c;color:#ff9a9a}
+html.dark .whenp .wp.empty{color:#6c7a8f}
