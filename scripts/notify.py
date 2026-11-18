@@ -1,8 +1,8 @@
 """FamToDo notifications — runs on GitHub Actions every ~10 minutes (.github/workflows/notify.yml).
- 1. New task that someone added for someone else  -> push to the list's members (except the creator)
+ 1. New task that Kobi or Orit added for someone else -> push to the list's members (except the creator)
  2. Morning reminder (from 07:00)                  -> tasks due today / overdue
  3. After-school reminder (from 14:30)             -> tasks due today / overdue + open tasks without a date
- 4. Task with a time (e.g. 15:00) due today        -> reminder at that time to the list's members
+ 4. Task with a time (e.g. 15:00) due today        -> reminder at that time (personal list: its owner; group list: its members)
  5. Recycle bin: tasks deleted more than 14 days ago are removed for good
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
 import os, json, time, datetime
@@ -20,6 +20,7 @@ NAMES = {'kobi': 'קובי', 'orit': 'אורית', 'aviv': 'אביב', 'yuval': 
 FEMALE = {'orit', 'aviv', 'yuval'}
 MEMBERS = {p: [p] for p in NAMES}
 MEMBERS.update({'family': list(NAMES), 'parents': ['kobi', 'orit'], 'kids': ['aviv', 'yuval', 'omer']})
+ADMINS = ('kobi', 'orit')
 LIST_NAMES = dict(NAMES, family='משפחתי', parents='אורית וקובי', kids='ילדים')
 
 firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SA'])))
@@ -75,6 +76,8 @@ for d in db.collection('tasks').where('createdAt', '>', last).stream():
     if t.get('archived') or t.get('done') or t.get('deleted'):
         continue
     creator = t.get('createdBy')
+    if creator not in ADMINS:       # only Kobi/Orit adding for others triggers a "new task" alert
+        continue
     for r in MEMBERS.get(t.get('list'), []):
         if r != creator:
             per_person.setdefault(r, []).append(t)
