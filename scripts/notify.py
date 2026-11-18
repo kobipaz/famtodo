@@ -15,6 +15,7 @@ ICON = APP_URL + 'icon-192.png'
 TZ = ZoneInfo('Asia/Jerusalem')
 MORNING = (7, 0)          # first run after this time sends the morning reminder
 AFTER_SCHOOL = (14, 30)   # first run after this time sends the after-school reminder
+EARLY_MIN = 5             # time reminders go out up to 5 min early (runs every ~5 min) so they land on time
 
 NAMES = {'kobi': 'קובי', 'orit': 'אורית', 'aviv': 'אביב', 'yuval': 'יובל', 'omer': 'עומר'}
 FEMALE = {'orit', 'aviv', 'yuval'}
@@ -134,7 +135,7 @@ for d in db.collection('tasks').where('due', '==', today).stream():
         tmin = int(tm[:2]) * 60 + int(tm[3:5])
     except ValueError:
         continue
-    if tmin > now_min or t.get('remindedFor') == key:
+    if tmin - EARLY_MIN > now_min or t.get('remindedFor') == key:
         continue
     if now_min - tmin <= 60:          # don't remind about times that passed long ago
         where = LIST_NAMES.get(t.get('list'), '')
