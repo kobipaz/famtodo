@@ -4,9 +4,10 @@
    Everyone sees the board; Kobi & Orit add for any kid, each kid adds for themself; only Kobi & Orit delete. */
 var SUBJECTS = {
   aviv: ['שפה', 'תל״ן', 'חנ״ג', 'מדעים', 'אנגלית', 'תרבות ישראל', 'טד', 'מתמטיקה', 'לשון', 'גיאוגרפיה', 'תנ״ך', 'חינוך', 'ביוטק', 'ערבית', 'היסטוריה', 'חינוך פיננסי'],
-  yuval: ['אנגלית', 'תל״ן גלילאו', 'מתמטיקה', 'מולדת', 'מורשת', 'מדעים', 'שפה', 'תאטרון', 'קריאה דיאלוגית', 'כישורי חיים', 'חנ״ג', 'חינוך פיננסי', 'תנ״ך', 'מוזיקה', 'טד', 'חינוך'],
+  yuval: ['אנגלית', 'תל״ן גלילאו', 'מתמטיקה', 'מולדת', 'מורשת', 'מדעים', 'שפה', 'תאטרון', 'קריאה דיאלוגית', 'כישורי חיים', 'חנ״ג', 'חינוך פיננסי', 'תנ״ך', 'מוזיקה', 'טד', 'חינוך', 'גיאומטריה'],
   omer: ['ספורט', 'שפה', 'תיאטרון', 'מדעים', 'גיאומטריה', 'מתמטיקה', 'טד', 'תל״ן', 'אנגלית', 'מולדת', 'תורה', 'אומנות', 'מוזיקה', 'חינוך פיננסי', 'תרבות יהודית', 'קריאה דיאלוגית', 'כישורי חיים']
 };
+Object.keys(SUBJECTS).forEach(function (k) { SUBJECTS[k].sort(function (a, b) { return a.localeCompare(b, 'he'); }); });
 var KIDS = ['aviv', 'yuval', 'omer'];
 var EXAMS = { id: 'exams', name: 'לוח מבחנים', color: '#7c4dcc', icon: '📝' };
 L.exams = EXAMS;
@@ -151,10 +152,11 @@ document.addEventListener('click', function (e) {
   }
   if (t.closest('[data-ex-x]')) { st.exForm = null; st.sure = null; return exDraw(); }
 }, true);
-document.addEventListener('change', function (e) {
-  if (e.target && e.target.id === 'exdue' && st.exForm) { exGrab(); exDraw(); }
-}, true);
-document.addEventListener('click', function (e) {
-  var lab = e.target.closest && e.target.closest('.exdatein');
-  if (lab) { var i = lab.querySelector('input'); if (i && i.showPicker) { try { i.showPicker(); e.preventDefault(); } catch (er) {} } }
-});
+/* date: only update the label text (redrawing the window would close the phone's date picker) */
+function exDateLabel(e) {
+  if (!e.target || e.target.id !== 'exdue' || !st.exForm) return;
+  st.exForm.due = e.target.value;
+  var sp = e.target.parentNode.querySelector('span'); if (sp) sp.textContent = e.target.value ? exFmt(e.target.value) : 'בחירת תאריך…';
+}
+document.addEventListener('input', exDateLabel, true);
+document.addEventListener('change', exDateLabel, true);

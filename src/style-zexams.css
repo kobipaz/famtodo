@@ -1,7 +1,8 @@
 .exadd{padding:9px 14px}
 .exkids{display:flex;gap:6px;flex-wrap:wrap;margin:0 4px 12px}
 .exkids button{border:0;border-radius:99px;padding:7px 14px;font-weight:700;font-size:15px;background:#eef2f7;color:var(--ink);cursor:pointer}
-.exkids button.on{background:var(--kc,#7c4dcc);color:#fff}
+.exkids button.on,html.dark .exkids button.on{background:var(--kc,#7c4dcc);color:#fff;box-shadow:0 0 0 3px var(--card),0 0 0 5px var(--kc,#7c4dcc);transform:scale(1.06)}
+.exkids button{transition:transform .12s}
 .exkids button[disabled]{opacity:.35;cursor:default}
 .exrow{display:grid;grid-template-columns:1fr auto;grid-template-areas:"sub left" "date date" "note note";gap:2px 10px;width:100%;text-align:right;border:0;background:var(--card);box-shadow:var(--sh);border-radius:16px;padding:12px 14px;margin:0 0 10px;border-inline-start:6px solid var(--kc);cursor:pointer;font:inherit;color:var(--ink)}
 .exsub{grid-area:sub;font-size:18px;font-weight:800}
@@ -22,10 +23,12 @@
 .exsubs button{border:1.5px solid var(--line);background:var(--bg);border-radius:12px;padding:7px 11px;font-size:15px;cursor:pointer;color:var(--ink)}
 .exsubs button.on{background:#7c4dcc;border-color:#7c4dcc;color:#fff;font-weight:700}
 .exdatein{position:relative;display:block;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font-size:16px;font-weight:600;background:var(--bg);cursor:pointer}
-.exdatein input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.exdatein input{position:absolute;inset:0;opacity:0.011;color:transparent;background:transparent;border:0;width:100%;height:100%;cursor:pointer;font-size:16px;-webkit-appearance:none;appearance:none}
 #exdet{width:100%;min-height:80px;border:1.5px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:16px;background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical}
 .excard .nbact .btn.danger{flex:0 0 auto}
 html.dark .exkids button{background:#26324a}
 html.dark .exleft{background:#26324a}
 html.dark .exrow.soon .exleft{background:#3a2f12;color:#ffc46b}
 html.dark .exrow.today .exleft{background:#4a1c1c;color:#ff9a9a}
+html.dark .exsubs button.on{background:#7c4dcc;border-color:#7c4dcc;color:#fff}
+.excard .exkids{padding:4px 2px}
