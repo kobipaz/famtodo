@@ -2,6 +2,7 @@
  1. New task that Kobi or Orit added for someone else -> push to the list's members (except the creator)
  2. Morning reminder (from 07:00)                  -> tasks due today / overdue
  3. After-school reminder (from 14:30)             -> tasks due today / overdue + open tasks without a date
+                                                     + "📝 מחר מבחן" for a kid with an exam tomorrow (exam board)
  4. Task with a time (e.g. 15:00) due today        -> reminder at that time (personal list: its owner; group list: its members)
  5. Recycle bin: tasks deleted more than 14 days ago are removed for good
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
@@ -22,6 +23,13 @@ FEMALE = {'orit', 'aviv', 'yuval'}
 MEMBERS = {p: [p] for p in NAMES}
 MEMBERS.update({'family': list(NAMES), 'parents': ['kobi', 'orit'], 'kids': ['aviv', 'yuval', 'omer']})
 ADMINS = ('kobi', 'orit')
+def recips(t):
+    """Who a task belongs to: an exam (exam board) belongs only to its kid; otherwise the list's members."""
+    if t.get('exam') and t.get('kid') in NAMES:
+        return [t['kid']]
+    return MEMBERS.get(t.get('list'), [])
+
+
 LIST_NAMES = dict(NAMES, family='משפחתי', parents='אורית וקובי', kids='ילדים')
 
 firebase_admin.initialize_app(credentials.Certificate(json.loads(os.environ['FIREBASE_SA'])))
@@ -68,6 +76,7 @@ state = (meta_ref.get().to_dict() or {})
 now_ms = int(time.time() * 1000)
 now = datetime.datetime.now(TZ)
 today = now.strftime('%Y-%m-%d')
+tomorrow = (now + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
 
 # ---------- 1. new tasks for someone else ----------
 last = state.get('lastNew') or now_ms          # first run: start from now (no flood of old tasks)
@@ -79,7 +88,7 @@ for d in db.collection('tasks').where('createdAt', '>', last).stream():
     creator = t.get('createdBy')
     if creator not in ADMINS:       # only Kobi/Orit adding for others triggers a "new task" alert
         continue
-    for r in MEMBERS.get(t.get('list'), []):
+    for r in recips(t):
         if r != creator:
             per_person.setdefault(r, []).append(t)
 for person, ts in per_person.items():
@@ -101,10 +110,11 @@ def digest(kind):
     open_tasks = [d.to_dict() for d in db.collection('tasks').where('done', '==', False).stream()]
     open_tasks = [t for t in open_tasks if not t.get('archived') and not t.get('deleted')]
     for person in NAMES:
-        mine = [t for t in open_tasks if person in MEMBERS.get(t.get('list'), [])]
+        mine = [t for t in open_tasks if person in recips(t)]
         due = sorted([t for t in mine if t.get('due') and t['due'] <= today], key=lambda t: t['due'])
         late = [t for t in due if t['due'] < today]
-        undated = [t for t in mine if not t.get('due') and t.get('list') in (person, 'kids')]
+        undated = [t for t in mine if not t.get('due') and t.get('list') in (person, 'kids') and not t.get('exam')]
+        exams_tmrw = [t for t in mine if t.get('exam') and t.get('due') == tomorrow]
         if kind == 'morning':
             if not due:
                 continue
@@ -112,6 +122,10 @@ def digest(kind):
             body = f'{len(due)} משימות להיום' + (f' ({len(late)} באיחור)' if late else '') + '\n' + short(due)
         else:
             items = due + undated
+            if not items and not exams_tmrw:
+                continue
+            if exams_tmrw:                                 # day-before exam reminder
+                push(person, '📝 מחר מבחן!', '\n'.join('• ' + (t.get('subject') or t['title']) for t in exams_tmrw))
             if not items:
                 continue
             title = '🎒 משימות אחרי בית הספר' if person in ('aviv', 'yuval', 'omer') else '🕒 תזכורת צהריים'
@@ -139,7 +153,7 @@ for d in db.collection('tasks').where('due', '==', today).stream():
         continue
     if now_min - tmin <= 60:          # don't remind about times that passed long ago
         where = LIST_NAMES.get(t.get('list'), '')
-        for r in MEMBERS.get(t.get('list'), []):
+        for r in recips(t):
             print('time ->', r, push(r, f'⏰ {tm} · {t["title"]}', f'ברשימה: {where}'))
     d.reference.update({'remindedFor': key})
 
