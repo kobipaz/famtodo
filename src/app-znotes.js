@@ -1,6 +1,26 @@
 /* 📓 Details notebook per task: a small button at the top-left of each task opens a floating
    window to write longer details (saved in the task as "details"). Save / Cancel / Close. */
 var NB_MAX = 5000;
+var NB_SHARE_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+/* Share: title in *bold* (WhatsApp/Telegram format) + the details as plain text — what's in the window now */
+function nbShare() {
+  if (!st.nb) return;
+  var t = find(st.nb.id); if (!t) return;
+  var ta = document.getElementById('nbtext'), det = String(ta ? ta.value : (t.details || '')).replace(/\s+$/, '');
+  var text = '*' + t.title.trim() + '*' + (det ? '\n' + det : '');
+  if (navigator.share) {
+    navigator.share({ text: text }).catch(function (e) { if (e && e.name !== 'AbortError') nbCopy(text); });
+  } else nbCopy(text);
+}
+function nbCopy(text) {
+  var done = function () { toast('📋 הועתק — אפשר להדביק בכל מקום'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, function () { nbCopyOld(text); done(); });
+  else { nbCopyOld(text); done(); }
+}
+function nbCopyOld(text) {
+  var a = document.createElement('textarea'); a.value = text; a.style.position = 'fixed'; a.style.opacity = '0';
+  document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (e) {} a.remove();
+}
 st.nb = null;   /* { id, orig } while the window is open */
 var _taskHtmlN = taskHtml;
 taskHtml = function (t) {
@@ -18,6 +38,7 @@ function nbOpen(id) {
   var w = nbEl(); if (!w) { w = document.createElement('div'); w.id = 'nbwin'; document.body.appendChild(w); }
   w.innerHTML = '<div class="nbback" data-nb-x="1"></div><div class="nbcard" role="dialog" aria-label="פרטים">' +
     '<div class="nbhead"><span class="nbic">📓</span><span class="nbtitle">' + esc(t.title) + '</span>' +
+    '<button type="button" class="nbshare" data-nb-share="1" aria-label="שיתוף">' + NB_SHARE_SVG + '</button>' +
     '<button type="button" class="nbclose" data-nb-x="1" aria-label="סגירה">✕</button></div>' +
     '<textarea id="nbtext" maxlength="' + NB_MAX + '" placeholder="פרטים, כתובות, טלפונים, מה צריך להביא…">' + esc(t.details || '') + '</textarea>' +
     '<div class="nbmeta">' + by + '</div>' +
@@ -47,6 +68,7 @@ document.addEventListener('click', function (e) {
   var b = e.target.closest && e.target.closest('[data-nb]');
   if (b) { e.preventDefault(); e.stopPropagation(); return nbOpen(b.getAttribute('data-nb')); }
   if (!st.nb) return;
+  if (e.target.closest('[data-nb-share]')) { e.stopPropagation(); return nbShare(); }
   if (e.target.closest('[data-nb-save]')) { e.stopPropagation(); return nbSave(); }
   if (e.target.closest('[data-nb-cancel]')) { e.stopPropagation(); return nbHide(); }
   if (e.target.closest('[data-nb-x]')) { e.stopPropagation(); return nbClose(); }
