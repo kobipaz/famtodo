@@ -2,50 +2,75 @@
    https://kobipaz.github.io/famtodo/?add=<text>[&list=<id>]
    Understands who (לאורית… / עבור אביב), topic (נושא קניות), day (היום/מחר/מחרתיים) and time
    (בשעה 10, בשעה 8 בערב, ב-17:30, 10 וחצי). */
-/* Who: at the start ("לאורית לקנות חלב"), or "עבור/בשביל/ברשימה של X" anywhere.
-   ("להתקשר לאורית" stays a task for me — "לאורית" in the middle is not a recipient.) */
+/* Who: at the start ("לאורית לקנות חלב"), at the end ("…למשימות של אורית וקובי", "…לילדים"),
+   or "עבור/בשביל X" anywhere. A single name at the end counts only after a day/time
+   ("לבקר את אמא בשבת לאורית"), so "להתקשר לאורית" stays my own task. */
 var QUICK_WHO = [['אורית וקובי', 'parents'], ['קובי ואורית', 'parents'], ['ההורים', 'parents'], ['הורים', 'parents'],
   ['המשפחה', 'family'], ['משפחה', 'family'], ['משפחתי', 'family'], ['הילדים', 'kids'], ['ילדים', 'kids'],
   ['אורית', 'orit'], ['קובי', 'kobi'], ['אביב', 'aviv'], ['יובל', 'yuval'], ['עומר', 'omer'], ['עצמי', 'me'], ['אותי', 'me']];
+var QUICK_NUM = { 'אחת': 1, 'שתיים': 2, 'שתים': 2, 'שלוש': 3, 'ארבע': 4, 'חמש': 5, 'שש': 6, 'שבע': 7, 'שמונה': 8, 'תשע': 9, 'עשר': 10,
+  'אחת עשרה': 11, 'אחת-עשרה': 11, 'שתים עשרה': 12, 'שתיים עשרה': 12, 'שתים-עשרה': 12 };
+var QUICK_PART = { 'בבוקר': ['am', '09:00'], 'בצהריים': ['noon', '12:00'], 'אחר הצהריים': ['pm', '15:00'], 'אחרי הצהריים': ['pm', '15:00'],
+  'אחה"צ': ['pm', '15:00'], 'אחה״צ': ['pm', '15:00'], 'בערב': ['pm', '18:00'], 'בלילה': ['pm', '21:00'] };
+var QUICK_WD = { 'ראשון': 0, 'שני': 1, 'שלישי': 2, 'רביעי': 3, 'חמישי': 4, 'שישי': 5, 'שבת': 6 };
+function qEsc(x) { return x.replace(/[.*+?^${}()|[\]\\"״]/g, '\\$&'); }
 function parseQuick(s) {
-  var r = { title: ' ' + s + ' ', due: '', time: '', list: '', topic: '' };
+  var r = { title: ' ' + String(s).replace(/[.!?]+\s*$/, '') + ' ', due: '', time: '', list: '', topic: '' };
+  var WHEN = /(מחר|היום|מחרתיים|שבת|ראשון|שני|שלישי|רביעי|חמישי|שישי|שעה|בבוקר|בערב|בלילה|צהריים|אחה|\d)/;
   /* recipient */
   for (var i = 0; i < QUICK_WHO.length && !r.list; i++) {
-    var w = QUICK_WHO[i][0];
-    var res = [new RegExp('^\\s*ל' + w + '[\\s,:]'), new RegExp('\\s(?:עבור|בשביל|ברשימה של|לרשימה של|ברשימת|לרשימת)\\s+' + w + '(?=[\\s,.]|$)')];
-    for (var k = 0; k < res.length; k++) if (res[k].test(r.title)) { r.list = QUICK_WHO[i][1]; r.title = r.title.replace(res[k], ' '); break; }
+    var w = qEsc(QUICK_WHO[i][0]), id = QUICK_WHO[i][1], group = !P[id];
+    var tries = [
+      [new RegExp('^\\s*ל' + w + '[\\s,:]'), true],
+      [new RegExp('\\s(?:עבור|בשביל|ברשימה של|לרשימה של|ברשימת|לרשימת|למשימות של|במשימות של)\\s+' + w + '(?=[\\s,.]|$)'), true],
+      [new RegExp('\\sל' + w + '\\s*$'), 'end']
+    ];
+    for (var k = 0; k < tries.length; k++) {
+      var mt = r.title.match(tries[k][0]); if (!mt) continue;
+      if (tries[k][1] === 'end' && !group && !WHEN.test(r.title.slice(0, mt.index))) continue;
+      r.list = id; r.title = r.title.replace(tries[k][0], ' '); break;
+    }
   }
   /* topic: "נושא קניות" / "בנושא רפואי" */
   var tm = r.title.match(/\s(?:ב)?נושא\s+(\S+(?:\s\S+)?)/);
   if (tm) {
     var hit = TOPICS.filter(function (t) { return tm[1].indexOf(t.name) === 0; })[0];
-    if (hit) { r.topic = hit.id; r.title = r.title.replace(new RegExp('\\s(?:ב)?נושא\\s+' + hit.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), ' '); }
+    if (hit) { r.topic = hit.id; r.title = r.title.replace(new RegExp('\\s(?:ב)?נושא\\s+' + qEsc(hit.name)), ' '); }
   }
-  /* time: "בשעה 10", "בשעה 10:30", "ב-17", "ב10:30", "10 וחצי", + בבוקר/בצהריים/אחר הצהריים/בערב/בלילה */
-  var m = r.title.match(/\s(?:ב)?(?:שעה|-)\s*(\d{1,2})(?::(\d{2}))?(\s+(?:וחצי|ורבע))?(?=\s)/) || r.title.match(/\sב(\d{1,2}):(\d{2})(?=\s)/);
+  /* time: number ("בשעה 10", "ב-17:30", "ב10:30") or words ("בחמש", "בשעה שמונה וחצי"), + part of day */
+  var parts = Object.keys(QUICK_PART).map(qEsc).join('|');
+  var nums = Object.keys(QUICK_NUM).sort(function (a, b) { return b.length - a.length; }).map(qEsc).join('|');
+  var re = new RegExp('\\s(?:בשעה\\s*|שעה\\s*|ב-?\\s*)(\\d{1,2}(?::\\d{2})?|' + nums + ')(\\s+(?:וחצי|ורבע))?(\\s+(?:' + parts + '))?(?=\\s)');
+  var m = r.title.match(re);
+  if (m && /^\d{1,2}$/.test(m[1]) && !/שעה|-/.test(m[0]) && !m[2] && !m[3]) m = null;   /* "ב5" alone is too vague */
   if (m) {
-    var h = +m[1], mi = m[2] ? +m[2] : (m[3] ? (m[3].indexOf('חצי') >= 0 ? 30 : 15) : 0);
-    var rest = r.title.slice(r.title.indexOf(m[0]) + m[0].length);
-    var pm = rest.match(/^\s*(בערב|בלילה|אחר הצהריים|אחרי הצהריים|אחה"צ|אחה״צ|בצהריים|בבוקר)(?=\s)/);
-    if (pm) {
-      if (h < 12 && /ערב|לילה|צהריים|אחה/.test(pm[1]) && !(pm[1] === 'בצהריים' && h >= 11)) h += 12;
-      if (h === 24) h = 0;
-      r.title = r.title.replace(m[0] + pm[0], ' ');
-    } else r.title = r.title.replace(m[0], ' ');
-    if (h >= 0 && h < 24 && mi < 60) r.time = (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi;
+    var hm = /^\d/.test(m[1]) ? m[1].split(':') : [String(QUICK_NUM[m[1]]), ''];
+    var h = +hm[0], mi = hm[1] ? +hm[1] : (m[2] ? (m[2].indexOf('חצי') >= 0 ? 30 : 15) : 0);
+    var part = m[3] ? QUICK_PART[m[3].trim()][0] : '';
+    if (h < 12 && part === 'pm') h += 12;
+    if (part === 'noon' && h < 6) h += 12;
+    if (!part && !m[1].includes(':') && /^\d/.test(m[1]) === false && h < 7) h += 12;   /* "בחמש" → 17:00 */
+    if (h >= 0 && h < 24 && mi < 60) { r.time = (h < 10 ? '0' : '') + h + ':' + (mi < 10 ? '0' : '') + mi; r.title = r.title.replace(m[0], ' '); }
+  } else {
+    /* only a part of day ("בשבת אחר הצהריים") → the app's preset time */
+    var pm = r.title.match(new RegExp('\\s(' + parts + ')(?=\\s)'));
+    if (pm) { r.time = QUICK_PART[pm[1]][1]; r.title = r.title.replace(pm[0], ' '); }
   }
-  /* day */
+  /* day: היום / מחר / מחרתיים / (ב|ל)(יום) שבת / ביום שלישי … */
   var days = [['מחרתיים', 2], ['מחר', 1], ['היום', 0]];
   for (var d = 0; d < days.length; d++) {
-    var re = new RegExp('\\s(?:ל|ב)?' + days[d][0] + '(?=\\s)');
-    if (re.test(r.title)) { r.due = ymd(addDays(days[d][1])); r.title = r.title.replace(re, ' '); break; }
+    var rd = new RegExp('\\s(?:ל|ב)?' + days[d][0] + '(?=\\s)');
+    if (rd.test(r.title)) { r.due = ymd(addDays(days[d][1])); r.title = r.title.replace(rd, ' '); break; }
   }
-  if (r.time && !r.due) {                       /* time without a day: today, or tomorrow if that time already passed */
-    var now = new Date(), passed = +r.time.slice(0, 2) * 60 + +r.time.slice(3) <= now.getHours() * 60 + now.getMinutes();
-    r.due = ymd(addDays(passed ? 1 : 0));
+  if (!r.due) {
+    var wm = r.title.match(/\s(?:ב|ל)?יום\s+(ראשון|שני|שלישי|רביעי|חמישי|שישי|שבת)(?:\s+הקרוב)?(?=\s)/) || r.title.match(/\s(?:ב|ל)(שבת|שישי)(?:\s+הקרוב(?:ה)?)?(?=\s)/);
+    if (wm) { var ahead = (QUICK_WD[wm[1]] - new Date().getDay() + 7) % 7; r.due = ymd(addDays(ahead)); r.title = r.title.replace(wm[0], ' '); }
   }
+  var now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+  var tMin = r.time ? +r.time.slice(0, 2) * 60 + +r.time.slice(3) : 0;
+  if (r.time && !r.due) r.due = ymd(addDays(tMin <= nowMin ? 1 : 0));          /* time only: today, or tomorrow if passed */
   r.title = r.title.replace(/\s+/g, ' ').replace(/^[\s,:-]+|[\s,:-]+$/g, '').trim();
-  if (!r.title) r.title = s.trim();
+  if (!r.title) r.title = String(s).trim();
   return r;
 }
 (function () {
