@@ -20,7 +20,7 @@ renderList = function () {
   var af = document.getElementById('addform'); if (af) af.style.display = 'none';
   var me = st.me.id, people = st.lists.filter(function (id) { return L[id].personal; }), groups = st.lists.filter(function (id) { return !L[id].personal; });
   people.sort(function (a, b) { return (a === me ? -1 : 0) - (b === me ? -1 : 0); });
-  var hr = new Date().getHours(), hi = hr < 12 ? 'בוקר טוב' : hr < 17 ? 'צהריים טובים' : hr < 21 ? 'ערב טוב' : 'לילה טוב';
+  var hr = new Date().getHours(), hi = hr < 5 ? 'לילה טוב' : hr < 12 ? 'בוקר טוב' : hr < 17 ? 'צהריים טובים' : hr < 21 ? 'ערב טוב' : 'לילה טוב';
   var h = '<div class="hmhello">' + hi + ', ' + esc(P[me].name) + ' 👋</div>';
   h += '<div class="hmsec">המשפחה</div><div class="hmgrid">' + people.map(function (id) {
     return hmTile(id, '<span class="hmav" style="background:' + P[id].color + '">' + esc(P[id].name.charAt(0)) + '</span>', P[id].name + (id === me ? ' (שלי)' : ''), hmCount(id), P[id].color, id === me);
@@ -28,9 +28,10 @@ renderList = function () {
   h += '<div class="hmsec">קבוצות</div><div class="hmgrid">' + groups.map(function (id) { return hmTile(id, L[id].icon, L[id].name, hmCount(id), L[id].color); }).join('') +
     (me === 'kobi' || me === 'orit' ? hmTile('all', '📋', 'כל המשימות', '', '#14213d') : '') + '</div>';
   /* boards */
-  var ex = (st.exams || []).filter(function (t) { return t.due && dayDiff(t.due) >= 0; }).sort(function (a, b) { return a.due.localeCompare(b.due); })[0];
+  var kid = ['aviv', 'yuval', 'omer'].indexOf(me) >= 0;   /* kids: their own exams / activities in the tile summaries */
+  var ex = (st.exams || []).filter(function (t) { return t.due && dayDiff(t.due) >= 0 && (!kid || t.kid === me); }).sort(function (a, b) { return a.due.localeCompare(b.due); })[0];
   var exSub = ex ? esc(ex.subject) + ' (' + esc(P[ex.kid].name) + ') · ' + exLeft(ex.due).t : 'אין מבחנים קרובים';
-  var wd = new Date().getDay(), chToday = (st.chugs || []).reduce(function (n, c) { return n + (c.mode !== 'var' ? (c.slots || []).filter(function (s) { return +s.d === wd; }).length : (c.dates || []).filter(function (x) { return x.date === ymd(addDays(0)); }).length); }, 0);
+  var wd = new Date().getDay(), chToday = (st.chugs || []).reduce(function (n, c) { if (kid && c.who !== me) return n; return n + (c.mode !== 'var' ? (c.slots || []).filter(function (s) { return +s.d === wd; }).length : (c.dates || []).filter(function (x) { return x.date === ymd(addDays(0)); }).length); }, 0);
   var chSub = (st.chugs || []).length ? (chToday ? chToday + ' חוגים היום' : 'אין חוגים היום') : 'עוד אין חוגים';
   var rc = st.tasks.filter(function (t) { return t.repeat && !t.archived && t.due && dayDiff(t.due) <= 0; }).length;
   var rcSub = rc ? rc + ' להיום' : (st.tasks.some(function (t) { return t.repeat; }) ? 'הכל בוצע להיום ✔' : 'עוד אין');
@@ -59,4 +60,7 @@ document.addEventListener('click', function (e) {
   if (!st.me || st.screen !== 'main') return;
   if (e.target.closest && e.target.closest('header .logo, header .wordmark')) { st.active = 'home'; st.open = null; renderChips(); renderList(); window.scrollTo(0, 0); }
 });
+/* every open starts on the home screen (the base app would fall back to the person's own list) */
+var _startMainHM = startMain;
+startMain = function (p) { _startMainHM(p); st.active = 'home'; renderChips(); renderList(); };
 if (st.me && st.screen === 'main') { st.active = 'home'; renderChips(); renderList(); }
