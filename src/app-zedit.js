@@ -18,3 +18,9 @@ document.addEventListener('input', function (e) {
     growEdit(e.target);
   }
 });
+/* the note button is "שמירה" (save), not "שליחה" */
+var _taskHtmlE2 = taskHtml;
+taskHtml = function (t) {
+  return _taskHtmlE2(t).replace(/(<button class="btn" data-act="note" data-id="[^"]*">)שליחה(<\/button>)/, '$1שמירה$2')
+                       .replace(/(id="note-[^"]*"[^>]*?)enterkeyhint="send"/, '$1enterkeyhint="done"');
+};
