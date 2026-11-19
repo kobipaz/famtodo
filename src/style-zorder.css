@@ -1,0 +1,7 @@
+.details .tacts{display:flex;flex-wrap:nowrap;gap:6px;margin:0 0 4px}
+.details .tacts .btn{flex:1 1 0;min-width:0;padding:10px 4px;font-size:14px;white-space:nowrap;margin:0}
+.details .editbox{margin-top:0}
+.notesec{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.noteshd{font-size:14px;font-weight:700;color:var(--muted);margin:0 2px 8px}
+.noteshd span{display:inline-block;min-width:18px;padding:0 6px;border-radius:99px;background:#e6edf6;font-size:12px;text-align:center}
+html.dark .noteshd span{background:#26324a}
