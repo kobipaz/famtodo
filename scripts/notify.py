@@ -5,6 +5,7 @@
                                                      + "📝 מחר מבחן" for a kid with an exam tomorrow (exam board)
  4. Task with a time (e.g. 15:00) due today        -> reminder at that time (personal list: its owner; group list: its members)
  5. Recycle bin: tasks deleted more than 14 days ago are removed for good
+ 6. Birthday today (birthdays board) -> a greeting reminder to everyone, with the morning reminder
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
 import os, json, time, datetime
 from zoneinfo import ZoneInfo
@@ -29,6 +30,8 @@ def recips(t):
         return [t['kid']]
     if t.get('chug'):                       # activities board: only the person it belongs to
         return [t['who']] if t.get('who') in NAMES else []
+    if t.get('bday'):                       # birthdays: no task alerts (a separate birthday greeting goes to everyone)
+        return []
     return MEMBERS.get(t.get('list'), [])
 
 
@@ -136,6 +139,13 @@ def digest(kind):
 
 if (now.hour, now.minute) >= MORNING and now.hour < 12 and state.get('morning') != today:
     digest('morning'); state['morning'] = today
+    md = now.strftime('%m-%d')                        # 🎂 birthday today -> everyone gets a heads-up
+    for d in db.collection('tasks').where('bday', '==', True).stream():
+        b = d.to_dict()
+        if b.get('md') == md:
+            age = (now.year - int(b['year'])) if str(b.get('year') or '').isdigit() else 0
+            for person in NAMES:
+                push(person, f'🎂 היום יום ההולדת של {b["title"]}!', (f'{age} שנים · ' if age else '') + 'לא לשכוח לאחל מזל טוב 🎉')
 if (now.hour, now.minute) >= AFTER_SCHOOL and now.hour < 20 and state.get('afternoon') != today:
     digest('afternoon'); state['afternoon'] = today
 

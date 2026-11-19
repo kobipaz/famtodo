@@ -5,7 +5,9 @@ var BDAY = { id: 'bday', name: 'ימי הולדת', color: '#dc2626', icon: '�
 L.bday = BDAY;
 var BD_SEED = [['אמא', '10-07', '1982'], ['אבא', '12-05', '1985'], ['אביב', '04-27', '2015'], ['יובל', '01-26', '2017'], ['עומר', '08-19', '2018'],
   ['סבא חנן', '', ''], ['סבתא טובה', '', ''], ['סבא אלי', '12-14', '1952'], ['סבתא גליה', '04-16', '1951'],
-  ['דודה טלי', '', ''], ['דודה רוני', '', ''], ['דודה רינת', '', '']];
+  ['דודה טלי', '', ''], ['דודה רוני', '', ''], ['דודה רינת', '', ''],
+  ['ניסים', '', ''], ['רונן', '', ''], ['אריאל', '', ''], ['רועי', '', ''], ['עידו', '', ''], ['רותם', '', ''],
+  ['שקד', '', ''], ['נדב', '', ''], ['הדס', '', ''], ['נגה', '', ''], ['שחר', '', ''], ['שילה', '', '']];
 var BD_WHO = { 'אמא': 'orit', 'אבא': 'kobi', 'אורית': 'orit', 'קובי': 'kobi', 'אביב': 'aviv', 'יובל': 'yuval', 'עומר': 'omer' };
 st.bdays = []; st.bdForm = null;
 function bdAdmin() { return st.me && (st.me.id === 'kobi' || st.me.id === 'orit'); }
@@ -30,7 +32,7 @@ function patchStoreBday() {
   var sub = store.subscribeTasks;
   store.subscribeTasks = function (lists, cb, err) {
     return sub.call(store, lists, function (tasks) {
-      st.bdays = tasks.filter(function (t) { return t.bday; });
+      var seen = {}; st.bdays = tasks.filter(function (t) { if (!t.bday || seen[t.title]) return false; seen[t.title] = 1; return true; });
       cb(tasks.filter(function (t) { return !t.bday; }));
       bdSeed();
       if (st.active === 'bday' || st.active === 'home') renderList();
@@ -40,14 +42,17 @@ function patchStoreBday() {
 var _startMainB = startMain;
 startMain = function (p) { patchStoreBday(); _startMainB(p); };
 if (st.me) startMain(st.me.id);
-/* first time: Kobi's device fills in the family list of birthdays */
+/* Kobi's device adds any name from the list that isn't on the board yet (once per list version) */
 function bdSeed() {
-  if (!st.me || st.me.id !== 'kobi' || !st.loaded || st.bdays.length || LS.get('bdSeeded') || st._bdSeeding) return;
-  st._bdSeeding = true; LS.set('bdSeeded', '1');
+  if (!st.me || st.me.id !== 'kobi' || !st.loaded || st._bdSeeding || +(LS.get('bdSeedV') || 0) >= BD_SEED.length) return;
+  st._bdSeeding = true; LS.set('bdSeedV', String(BD_SEED.length));
+  var have = {}; st.bdays.forEach(function (b) { have[b.title] = 1; });
   BD_SEED.forEach(function (r, i) {
+    if (have[r[0]]) return;
     store.add({ bday: true, title: r[0], md: r[1], year: r[2], list: 'family', topic: '', done: false, due: '', time: '',
                 createdBy: 'kobi', createdAt: Date.now() + i, doneBy: '', doneAt: 0, notes: [] }).catch(fail);
   });
+  st._bdSeeding = false;
 }
 var _renderChipsB = renderChips;
 renderChips = function () {
