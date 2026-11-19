@@ -79,12 +79,19 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); nbSave(); }
 }, true);
 /* keep details when a task is moved to another list */
-if (typeof moveTask === 'function') {
+function patchStoreNotes() {
+  if (!store || store._nbPatched) return;
+  store._nbPatched = true;
   var _addN = store.add;
   store.add = function (t) {
     if (st.movePickSrc && find(st.movePickSrc)) { var s = find(st.movePickSrc); t.details = s.details || ''; t.detailsBy = s.detailsBy || ''; t.detailsAt = s.detailsAt || 0; }
     return _addN.apply(this, arguments);
   };
+}
+var _startMainN = startMain;
+startMain = function (p) { patchStoreNotes(); _startMainN(p); };
+patchStoreNotes();   /* the store may already exist (e.g. demo mode) */
+if (typeof moveTask === 'function') {
   var _moveN = moveTask;
   moveTask = function (id) { st.movePickSrc = id; try { return _moveN.apply(this, arguments); } finally { st.movePickSrc = null; } };
 }

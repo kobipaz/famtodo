@@ -9,7 +9,8 @@ for extra in sorted(glob.glob('src/style-*.css')):
 logo = re.sub(r'\s*\n\s*', ' ', open('src/logo.svg', encoding='utf-8').read().strip())
 html = open('src/app.template.html', encoding='utf-8').read().replace('/*@@STYLE@@*/', style).replace('<!--@@LOGO@@-->', logo)
 # add-on scripts (src/app-*.js) run after the main script and may override its functions
-js = ''.join(open(f, encoding='utf-8').read() + '\n' for f in sorted(glob.glob('src/app-*.js')))
+# each add-on in its own <script>, so an error in one can't stop the ones after it
+js = '</script>\n<script>\n'.join('/* ' + f + ' */\n' + open(f, encoding='utf-8').read() + '\n' for f in sorted(glob.glob('src/app-*.js')))
 if js:
     html = html.replace('</body>', '<script>\n' + js + '</script>\n</body>')
 
