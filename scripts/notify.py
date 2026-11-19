@@ -27,6 +27,8 @@ def recips(t):
     """Who a task belongs to: an exam (exam board) belongs only to its kid; otherwise the list's members."""
     if t.get('exam') and t.get('kid') in NAMES:
         return [t['kid']]
+    if t.get('chug'):                       # activities board: only the person it belongs to
+        return [t['who']] if t.get('who') in NAMES else []
     return MEMBERS.get(t.get('list'), [])
 
 
