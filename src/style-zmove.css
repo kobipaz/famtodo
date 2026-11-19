@@ -1,0 +1,3 @@
+.lstbtn{border:0;cursor:pointer;font-size:inherit;font-family:inherit;line-height:inherit}
+.tpanel .trow2 .av.sm{width:26px;height:26px;font-size:13px;flex:none}
+.tpanel .trow2[disabled]{opacity:.55;cursor:default}
