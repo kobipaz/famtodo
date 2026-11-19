@@ -2,8 +2,11 @@
    A repeating task is a normal task with repeat:'daily'|'weekly'|'monthly'|'yearly' and a due date.
    It shows in its list like any task; marking it done moves it to its next date (with undo).
    Kobi & Orit add / edit / delete them in their own window (☰ → קבוצות → משימות קבועות). */
-L.family.color = '#0d9488';   /* family list: teal (was the same blue as Kobi) */
-var RECUR = { id: 'recur', name: 'משימות קבועות', color: '#64748b', icon: '🔁' };
+/* Each family member keeps one color everywhere (P[id].color). Groups / boards get colors that
+   don't look like anyone's: family teal, parents dark slate, kids cyan, boards navy / rust / stone / red. */
+L.family.color = '#0d9488'; L.parents.color = '#334155'; L.kids.color = '#0891b2';
+PEOPLE.forEach(function (p) { if (L[p.id]) L[p.id].color = p.color; });
+var RECUR = { id: 'recur', name: 'משימות קבועות', color: '#78716c', icon: '🔁' };
 L.recur = RECUR;
 var FREQ = { daily: 'יומי', weekly: 'שבועי', monthly: 'חודשי', yearly: 'שנתי' };
 var RECUR_PRESETS = ['להוציא זריקות', 'איסוף אשפה מהחדרים', 'לפנות מדיח'];
@@ -102,7 +105,7 @@ function rcDraw() {
       var l = L[id]; return '<button type="button" class="' + (f.list === id ? 'on' : '') + '" data-rc-list="' + id + '" style="--kc:' + l.color + '">' + (l.icon ? l.icon + ' ' : '') + esc(l.name) + '</button>';
     }).join('') + '</div>' +
     '<div class="exlbl">חזרה</div><div class="exkids rcfreq">' + Object.keys(FREQ).map(function (k) {
-      return '<button type="button" class="' + (f.repeat === k ? 'on' : '') + '" data-rc-freq="' + k + '" style="--kc:#64748b">' + FREQ[k] + '</button>';
+      return '<button type="button" class="' + (f.repeat === k ? 'on' : '') + '" data-rc-freq="' + k + '" style="--kc:#78716c">' + FREQ[k] + '</button>';
     }).join('') + '</div>' +
     '<div class="exlbl">' + whenLbl + '</div><label class="exdatein"><input type="date" id="rcdue" value="' + esc(f.due) + '"><span>' + exFmt(f.due) + '</span></label>' +
     '<div class="exlbl">שעה <small>(לא חובה — לתזכורת)</small></div><label class="exdatein"><input type="time" id="rctime" value="' + esc(f.time) + '"><span>' + (f.time || 'בלי שעה') + '</span></label>' +

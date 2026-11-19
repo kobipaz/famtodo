@@ -9,7 +9,7 @@ var SUBJECTS = {
 };
 Object.keys(SUBJECTS).forEach(function (k) { SUBJECTS[k].sort(function (a, b) { return a.localeCompare(b, 'he'); }); });
 var KIDS = ['aviv', 'yuval', 'omer'];
-var EXAMS = { id: 'exams', name: 'לוח מבחנים', color: '#7c4dcc', icon: '📝' };
+var EXAMS = { id: 'exams', name: 'לוח מבחנים', color: '#1e3a8a', icon: '📝' };
 L.exams = EXAMS;
 st.exams = []; st.exKid = 'all'; st.exForm = null; st.exPast = false;
 function exAdmin() { return st.me && (st.me.id === 'kobi' || st.me.id === 'orit'); }
