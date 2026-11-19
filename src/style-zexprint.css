@@ -1,0 +1,22 @@
+.listhead .exout{display:inline-flex;gap:6px;margin-inline-start:auto}
+.exoutb{width:42px;height:42px;border:0;border-radius:12px;background:#ede5fb;color:#7c4dcc;font-size:19px;display:grid;place-items:center;cursor:pointer}
+.exoutb:active{transform:scale(.93)}
+html.dark .exoutb{background:#2c2343;color:#c4a8ff}
+#exprint{display:none}
+@media print{
+  html.printing body > *:not(#exprint){display:none !important}
+  @page{size:A4;margin:12mm}
+  html.printing,html.printing body{margin:0 !important;padding:0 !important;background:#fff !important;overflow:visible !important}
+  html.printing #exprint{display:block;direction:rtl;font-family:inherit;color:#000;width:100%;box-sizing:border-box}
+  #exprint h1{font-size:22pt;margin:0 0 2mm}
+  #exprint .psub{color:#555;font-size:10pt;margin-bottom:6mm}
+  #exprint table{width:100%;border-collapse:collapse;font-size:12pt;table-layout:fixed}
+  #exprint th:first-child{width:28%}
+  #exprint th{background:#eee !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;text-align:right;padding:3mm;border:1px solid #999}
+  #exprint td{padding:3mm;border:1px solid #999;vertical-align:top}
+  #exprint .ps{font-weight:700}
+  #exprint .pd{white-space:nowrap}
+  #exprint .pm{font-size:10.5pt;color:#333}
+  #exprint .pdot{display:inline-block;width:9pt;height:9pt;border-radius:50%;margin-left:4pt;vertical-align:middle;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #exprint tr{break-inside:avoid}
+}
