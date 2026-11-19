@@ -6,6 +6,7 @@
  4. Task with a time (e.g. 15:00) due today        -> reminder at that time (personal list: its owner; group list: its members)
  5. Recycle bin: tasks deleted more than 14 days ago are removed for good
  6. Birthday today (birthdays board) -> a greeting reminder to everyone, with the morning reminder
+ 7. Family event tomorrow (events board) -> "🎉 מחר!" with the after-school reminder
 Times are Israel time. Needs the secret FIREBASE_SA (service-account JSON)."""
 import os, json, time, datetime
 from zoneinfo import ZoneInfo
@@ -93,6 +94,8 @@ for d in db.collection('tasks').where('createdAt', '>', last).stream():
     creator = t.get('createdBy')
     if creator not in ADMINS:       # only Kobi/Orit adding for others triggers a "new task" alert
         continue
+    if t.get('event') and not t.get('due'):   # a family event without a date yet: no alert
+        continue
     for r in recips(t):
         if r != creator:
             per_person.setdefault(r, []).append(t)
@@ -120,6 +123,7 @@ def digest(kind):
         late = [t for t in due if t['due'] < today]
         undated = [t for t in mine if not t.get('due') and t.get('list') in (person, 'kids') and not t.get('exam')]
         exams_tmrw = [t for t in mine if t.get('exam') and t.get('due') == tomorrow]
+        events_tmrw = [t for t in mine if t.get('event') and t.get('due') == tomorrow]
         if kind == 'morning':
             if not due:
                 continue
@@ -127,8 +131,10 @@ def digest(kind):
             body = f'{len(due)} משימות להיום' + (f' ({len(late)} באיחור)' if late else '') + '\n' + short(due)
         else:
             items = due + undated
-            if not items and not exams_tmrw:
+            if not items and not exams_tmrw and not events_tmrw:
                 continue
+            if events_tmrw:                                # day-before family event reminder
+                push(person, '🎉 מחר!', '\n'.join('• ' + t['title'] + (' ' + t['time'] if t.get('time') else '') for t in events_tmrw))
             if exams_tmrw:                                 # day-before exam reminder
                 push(person, '📝 מחר מבחן!', '\n'.join('• ' + (t.get('subject') or t['title']) for t in exams_tmrw))
             if not items:

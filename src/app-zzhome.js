@@ -38,9 +38,14 @@ renderList = function () {
   var bdSub = bd ? esc(bd.title) + ' · ' + bdDays(bn.days) : 'אין תאריכים';
   h += '<div class="hmsec">לוחות</div><div class="hmgrid">' +
     hmTile('exams', '📝', 'מבחנים', exSub, L.exams.color) + hmTile('chug', '🏅', 'חוגים', chSub, L.chug.color) +
-    hmTile('recur', '🔁', 'משימות קבועות', rcSub, L.recur.color) + hmTile('bday', '🎂', 'ימי הולדת', bdSub, L.bday.color) + '</div>';
+    hmTile('recur', '🔁', 'משימות קבועות', rcSub, L.recur.color) + hmTile('bday', '🎂', 'ימי הולדת', bdSub, L.bday.color) +
+    (typeof evUp === 'function' ? hmTile('events', '🎉', 'אירועים משפחתיים', evSub(), L.events.color, true) : '') + '</div>';
   el.innerHTML = h;
 };
+function evSub() {
+  var e = evUp().filter(function (x) { return x.due; })[0];
+  return e ? esc(e.title) + ' · ' + exLeft(e.due).t : (st.events.length ? st.events.length + ' אירועים · עוד בלי תאריך' : 'עוד אין אירועים');
+}
 /* drawer: "בית" first */
 var _renderChipsH2 = renderChips;
 renderChips = function () {
