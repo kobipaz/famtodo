@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deploy1.outputs.page_url || steps.deploy2.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install icon renderer
         run: sudo apt-get update -qq && sudo apt-get install -y -qq librsvg2-bin
       - name: Build
@@ -26,9 +26,17 @@ jobs:
           rsvg-convert -w 192 src/logo.svg -o _site/icon-192.png
           rsvg-convert -w 512 src/logo.svg -o _site/icon-512.png
           sed 's/rx="114"/rx="0"/' src/logo.svg | rsvg-convert -w 180 -o _site/apple-touch-icon.png
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # GitHub sometimes can't find the uploaded site for a few seconds — try again once after a pause
+      - id: deploy1
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Wait before retry
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 45
+      - id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        uses: actions/deploy-pages@v5
