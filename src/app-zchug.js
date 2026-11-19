@@ -2,7 +2,7 @@
    Stored as items in the "family" list with chug:true, who (person), title, mode:
    'fixed' (slots: [{d: 0-6, t:'HH:MM'}] every week) or 'var' (dates: [{date:'YYYY-MM-DD', t:'HH:MM'}]).
    Kept out of the task lists. Everyone sees them; Kobi & Orit add / edit / delete. */
-var CHUG = { id: 'chug', name: 'חוגים', color: '#be123c', icon: '🏅' };
+var CHUG = { id: 'chug', name: 'חוגים', color: '#9a3412', icon: '🏅' };
 L.chug = CHUG;
 var CHUG_NAMES = ['אנגלית', 'תופים', 'נבחרת', 'הגנה עצמית', 'כדורסל', 'כדורגל', 'חדר כושר', 'צופים', 'מתמטיקה', 'דורית', 'תזמורת', 'הוראה מתקנת']
   .sort(function (a, b) { return a.localeCompare(b, 'he'); });
@@ -105,8 +105,8 @@ function chDraw() {
       return '<button type="button" class="' + (!f.other && f.title === s ? 'on' : '') + '" data-ch-name="' + esc(s) + '">' + esc(s) + '</button>'; }).join('') +
       '<button type="button" class="' + (f.other ? 'on' : '') + '" data-ch-name="__other">אחר…</button></div>' +
     (f.other ? '<input class="inp" id="chother" maxlength="40" placeholder="שם החוג" value="' + esc(f.title) + '">' : '') +
-    '<div class="exlbl">מתי</div><div class="exkids chmode"><button type="button" class="' + (f.mode === 'fixed' ? 'on' : '') + '" data-ch-mode="fixed" style="--kc:#be123c">קבוע כל שבוע</button>' +
-      '<button type="button" class="' + (f.mode === 'var' ? 'on' : '') + '" data-ch-mode="var" style="--kc:#be123c">משתנה</button></div>' + rows +
+    '<div class="exlbl">מתי</div><div class="exkids chmode"><button type="button" class="' + (f.mode === 'fixed' ? 'on' : '') + '" data-ch-mode="fixed" style="--kc:#9a3412">קבוע כל שבוע</button>' +
+      '<button type="button" class="' + (f.mode === 'var' ? 'on' : '') + '" data-ch-mode="var" style="--kc:#9a3412">משתנה</button></div>' + rows +
     '<div class="exlbl">פרטים <small>(מקום, מדריך, טלפון — לא חובה)</small></div><textarea id="chdet" maxlength="1000">' + esc(f.details) + '</textarea>' +
     '<div class="nbact"><button type="button" class="btn" data-ch-save="1">שמירה</button><button type="button" class="btn soft" data-ch-x="1">ביטול</button>' +
     (f.id ? '<button type="button" class="btn danger ' + (st.sure === 'ch-' + f.id ? 'sure' : '') + '" data-ch-del="1">' + (st.sure === 'ch-' + f.id ? 'בטוח?' : '🗑') + '</button>' : '') + '</div></div>';
