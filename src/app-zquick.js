@@ -57,8 +57,10 @@ function parseQuick(s) {
     if (pm) { r.time = QUICK_PART[pm[1]][1]; r.title = r.title.replace(pm[0], ' '); }
   }
   /* day: היום / מחר / מחרתיים / (ב|ל)(יום) שבת / ביום שלישי … */
+  var ms = r.title.match(/\s(?:ב|ל)?מוצאי\s+שבת(?=\s)/);           /* "במוצאי שבת" → Saturday, 20:00 if no time given */
+  if (ms) { r.due = ymd(addDays((6 - new Date().getDay() + 7) % 7)); if (!r.time) r.time = '20:00'; r.title = r.title.replace(ms[0], ' '); }
   var days = [['מחרתיים', 2], ['מחר', 1], ['היום', 0]];
-  for (var d = 0; d < days.length; d++) {
+  for (var d = 0; d < days.length && !r.due; d++) {
     var rd = new RegExp('\\s(?:ל|ב)?' + days[d][0] + '(?=\\s)');
     if (rd.test(r.title)) { r.due = ymd(addDays(days[d][1])); r.title = r.title.replace(rd, ' '); break; }
   }
