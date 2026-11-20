@@ -10,10 +10,11 @@ function sqResults(raw) {
   /* places: people, groups, boards */
   var places = st.lists.concat(['exams', 'chug', 'recur', 'bday', 'events'].filter(function (id) { return L[id]; }));
   if (st.me.id === 'kobi' || st.me.id === 'orit') places.push('all');
+  if (typeof ghAllowed === 'function' && ghAllowed()) places.push('gh');
   places.push('archive');
   places.forEach(function (id) {
     var l = L[id] || (id === 'all' ? ALL : id === 'archive' ? ARCH : null); if (!l) return;
-    if (sqHas(q, [l.name])) out.push({ g: 'מקומות', ic: l.icon || '👤', t: l.name, s: '', c: l.color, go: { list: id } });
+    if (sqHas(q, [l.name, id === 'gh' ? 'זריקה זריקות' : ''])) out.push({ g: 'מקומות', ic: l.icon || '👤', t: l.name, s: '', c: l.color, go: { list: id } });
   });
   /* tasks */
   st.tasks.forEach(function (t) {

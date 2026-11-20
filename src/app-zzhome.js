@@ -53,6 +53,7 @@ renderList = function () {
   h += '<div class="hmsec">לוחות</div><div class="hmgrid">' +
     hmTile('exams', '📝', 'מבחנים', exSub, L.exams.color) + hmTile('chug', '🏅', 'חוגים', chSub, L.chug.color) +
     hmTile('recur', '🔁', 'משימות קבועות', rcSub, L.recur.color) + hmTile('bday', '🎂', 'ימי הולדת', bdSub, L.bday.color) +
+    (typeof ghAllowed === 'function' && ghAllowed() ? hmTile('gh', '💉', 'הורמון גדילה', 'היום: <b>' + ghSite(new Date()).n + '</b>', L.gh.color) : '') +
     (typeof evUp === 'function' ? hmTile('events', '🎉', 'אירועים משפחתיים', evSub(), L.events.color, true) : '') + '</div>';
   el.innerHTML = h;
 };
