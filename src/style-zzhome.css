@@ -19,6 +19,7 @@
 .bdcard.soon .bddays{color:#dc2626}
 .bdcard.nodate{opacity:.6}
 html.dark .bdcard.today{background:linear-gradient(145deg,#3a2f12,#3a1626)}
-.bdsel{display:flex;gap:6px}
+.bdsel{display:flex;gap:6px;direction:ltr}   /* day · month · year, left to right — like the date reads (18.10.1974) */
+.bdsel > *{direction:rtl}
 .bdsel select{flex:1;border:1.5px solid var(--line);border-radius:12px;padding:10px;font:inherit;font-size:16px;background:var(--bg);color:var(--ink)}
 .bdsel .inp{flex:1.3;min-width:0}
