@@ -11,7 +11,12 @@ var BD_SEED = [['אמא', '10-07', '1982'], ['אבא', '12-05', '1985'], ['אב�
 var BD_WHO = { 'אמא': 'orit', 'אבא': 'kobi', 'אורית': 'orit', 'קובי': 'kobi', 'אביב': 'aviv', 'יובל': 'yuval', 'עומר': 'omer' };
 st.bdays = []; st.bdForm = null;
 function bdAdmin() { return st.me && (st.me.id === 'kobi' || st.me.id === 'orit'); }
-function bdColor(b) { var p = P[BD_WHO[b.title]]; return p ? p.color : BDAY.color; }
+var BD_PAL = ['#e879b9', '#f0807a', '#a77ce8', '#5b9cf0', '#3fb8b0', '#f0a85a', '#e86a8a', '#7a8cf0'];   /* soft Shortcuts-like tile colors */
+function bdColor(b) {
+  var p = P[BD_WHO[b.title]]; if (p) return p.color;
+  var h = 0; for (var i = 0; i < b.title.length; i++) h = (h * 31 + b.title.charCodeAt(i)) % 997;
+  return BD_PAL[h % BD_PAL.length];
+}
 function bdNext(md) {   /* {days, date, age-turning} until the next birthday (today = 0) */
   if (!md) return null;
   var m = +md.slice(0, 2), d = +md.slice(3, 5), now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -76,10 +81,12 @@ renderList = function () {
   if (!items.length) h += '<div class="empty"><div class="big">🎂</div>אין עדיין ימי הולדת.</div>';
   h += '<div class="bdgrid">' + items.map(function (b) {
     var x = bdNext(b.md), age = x && b.year ? x.y - +b.year : 0;
+    var badge = !x ? '' : x.days === 0 ? '<span class="bdbadge now">🎉</span>' : '<span class="bdbadge"><b>' + x.days + '</b>' + (x.days === 1 ? 'יום' : 'ימים') + '</span>';
+    var sub = x ? (+b.md.slice(3)) + '.' + (+b.md.slice(0, 2)) + (age ? ' · ' + (x.days === 0 ? 'חוגג/ת ' : 'ימלאו ') + age : '') + (x.days === 0 ? ' · היום!' : x.days === 1 ? ' · מחר' : '')
+                : (bdAdmin() ? 'הוספת תאריך' : 'אין תאריך');
     return '<button class="bdcard' + (x && x.days === 0 ? ' today' : x && x.days <= 7 ? ' soon' : '') + (x ? '' : ' nodate') + '" data-bd="' + b.id + '" style="--kc:' + bdColor(b) + '">' +
-      '<span class="bdname">' + esc(b.title) + '</span>' +
-      (x ? '<span class="bddays">' + bdDays(x.days) + '</span><span class="bddate">' + (+b.md.slice(3)) + '.' + (+b.md.slice(0, 2)) + (b.year ? '.' + b.year : '') + (age ? ' · ' + (x.days === 0 ? 'חוגג/ת ' : 'ימלאו ') + age : '') + '</span>'
-         : '<span class="bddate">' + (bdAdmin() ? 'אין תאריך — לחצו להוספה' : 'אין תאריך') + '</span>') + '</button>';
+      '<span class="bdtop"><span class="bdic">🎂</span>' + badge + '</span>' +
+      '<span class="bdname">' + esc(b.title) + '</span><span class="bddate">' + sub + '</span></button>';
   }).join('') + '</div>';
   el.innerHTML = h;
 };
