@@ -1,0 +1,26 @@
+.cvhero{border-radius:22px;padding:14px 14px 10px;margin:2px 2px 16px;color:#fff;background:linear-gradient(150deg,#f97316,#9a3412);box-shadow:0 8px 20px rgba(154,52,18,.3)}
+.cvhh{font-size:15px;margin:0 4px 8px;opacity:.95}
+.cvhh b{font-size:22px;font-weight:800}
+.cvhrow{display:flex;align-items:center;gap:10px;width:100%;border:0;background:rgba(255,255,255,.16);border-radius:14px;padding:10px 12px;margin-bottom:6px;color:#fff;font:inherit;text-align:right;cursor:pointer}
+.cvhrow.past{opacity:.6}
+.cvht{font-size:20px;font-weight:800;min-width:54px;font-variant-numeric:tabular-nums;direction:ltr;text-align:right}
+.cvhic{font-size:22px}
+.cvhn{flex:1;font-size:17px;font-weight:700}
+.cvhw{font-size:13px;font-weight:700;background:#fff;color:var(--kc);border-radius:99px;padding:3px 10px}
+.cvnone{font-size:17px;font-weight:600;padding:6px 4px 10px}
+.cvday{margin:0 2px 16px}
+.cvdh{display:flex;align-items:baseline;gap:8px;margin:0 6px 8px}
+.cvdh span{font-size:17px;font-weight:800}
+.cvdh em{font-style:normal;font-size:12.5px;font-weight:800;color:#fff;background:#9a3412;border-radius:99px;padding:2px 9px}
+.cvdh small{margin-inline-start:auto;color:var(--muted);font-size:13px}
+.cvgrid{display:grid;grid-template-columns:1fr;gap:8px}
+.cvtile{display:flex;align-items:center;gap:12px;width:100%;border:1px solid #d3dbe7;border-radius:16px;padding:10px 12px;cursor:pointer;font:inherit;color:var(--ink);text-align:right;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--kc) 13%,var(--card)),var(--card) 70%);box-shadow:var(--sh);border-inline-start:6px solid var(--kc)}
+.cvic{display:grid;place-items:center;flex:none;width:42px;height:42px;border-radius:12px;font-size:22px;background:color-mix(in srgb,var(--kc) 22%,var(--card))}
+.cvtx{flex:1;display:flex;flex-direction:column;min-width:0}
+.cvname{font-size:17px;font-weight:800}
+.cvwho{display:flex;align-items:center;gap:5px;font-size:13.5px;color:var(--muted);font-weight:600}
+.cvwho i{width:9px;height:9px;border-radius:50%;background:var(--kc);display:inline-block}
+.cvtime{font-size:19px;font-weight:800;color:color-mix(in srgb,var(--kc) 78%,#000);font-variant-numeric:tabular-nums;direction:ltr}
+html.dark .cvtile{border-color:#33415a}
+html.dark .cvtime{color:color-mix(in srgb,var(--kc) 75%,#fff)}
