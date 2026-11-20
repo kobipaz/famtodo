@@ -14,7 +14,7 @@
 .ghinj{font-size:20px;flex:none}
 .ghday{width:66px;font-weight:800;color:var(--ink)}
 .ghdate{width:50px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
-.ghsite{flex:1;font-weight:800;font-size:19px;color:var(--kc);white-space:nowrap}
+.ghsite{flex:1;font-weight:400;font-size:19px;color:var(--kc);white-space:nowrap}
 .ghrow.past{opacity:.75}
 .ghrow.sat{background:color-mix(in srgb,var(--line) 35%,transparent)}
 .ghrow.today{background:color-mix(in srgb,var(--kc) 14%,var(--card));opacity:1}
