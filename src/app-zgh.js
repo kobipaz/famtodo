@@ -42,7 +42,7 @@ renderList = function () {
   for (var i = 1; i <= days; i++) {
     var d = new Date(first.getFullYear(), first.getMonth(), i), s = ghSite(d), isT = +d === +today, past = d < today;
     h += '<div class="ghrow' + (isT ? ' today' : '') + (past ? ' past' : '') + (d.getDay() === 6 ? ' sat' : '') + '" style="--kc:' + s.c + '"' + (isT ? ' id="ghnow"' : '') + '>' +
-      '<span class="ghday">' + WD[d.getDay()] + '</span><span class="ghdate">' + i + '.' + (d.getMonth() + 1) + '</span>' +
+      '<span class="ghinj">💉</span><span class="ghday">' + WD[d.getDay()] + '</span><span class="ghdate">' + i + '.' + (d.getMonth() + 1) + '</span>' +
       '<span class="ghsite">' + s.ic + ' ' + s.n + '</span>' + (isT ? '<span class="ghnow">היום</span>' : '') + '</div>';
   }
   el.innerHTML = h + '</div>';
