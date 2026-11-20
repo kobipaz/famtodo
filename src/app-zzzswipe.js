@@ -6,12 +6,16 @@
 /* The browser history is the one source of truth: every screen change adds a history step that remembers
    which screen it was ({ft:1, screen, idx}), so back AND forward (Mac trackpad, mouse buttons, ⌘[ ⌘]) land
    exactly where they should. Windows / the menu / an open card are closed by "back" without leaving the screen. */
-var NAV = { last: null, quiet: 0 };
+/* iPhone / iPad: the home-screen app has no browser history to speak of (history.back() there can stall or
+   blank the page), so on iOS the back swipe walks an in-app list of screens instead and history is not touched. */
+var NAV = { last: null, quiet: 0, stack: [] };
+var NAV_IOS = window.FT_IOS !== undefined ? !!window.FT_IOS
+  : (/iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 function navValid(id) { return !!(id && (L[id] || id === 'all' || id === 'archive')); }
 function navIdx() { return history.state && history.state.ft ? (history.state.idx || 0) : 0; }
 function navReset() {   /* start of a session / back from the background: this screen is the first step */
-  NAV.last = st.active;
-  try { history.replaceState({ ft: 1, screen: st.active, idx: 0 }, ''); } catch (e) {}
+  NAV.last = st.active; NAV.stack = [];
+  if (!NAV_IOS) try { history.replaceState({ ft: 1, screen: st.active, idx: 0 }, ''); } catch (e) {}
 }
 var _renderListSW = renderList;
 renderList = function () {
@@ -20,8 +24,9 @@ renderList = function () {
     if (NAV.quiet) NAV.last = st.active;
     else if (NAV.last === null) navReset();
     else if (NAV.last !== st.active) {
+      NAV.stack.push(NAV.last); if (NAV.stack.length > 40) NAV.stack.shift();
       NAV.last = st.active;
-      try { history.pushState({ ft: 1, screen: st.active, idx: navIdx() + 1 }, ''); } catch (e) {}
+      if (!NAV_IOS) try { history.pushState({ ft: 1, screen: st.active, idx: navIdx() + 1 }, ''); } catch (e) {}
     }
   }
   return r;
@@ -50,13 +55,21 @@ function swOverlay() {   /* close the top window / menu / open card; true if som
 }
 function swGoBack() {   /* iPhone swipe: close something, else one screen back */
   if (swOverlay()) return true;
+  if (NAV_IOS) {
+    while (NAV.stack.length) {
+      var prev = NAV.stack.pop();
+      if (prev !== st.active && navValid(prev)) { navShow(prev); return true; }
+    }
+    if (st.active !== 'home' && L.home) { navShow('home'); return true; }
+    return false;
+  }
   if (navIdx() > 0) { history.back(); return true; }
   if (st.active !== 'home' && L.home) { navShow('home'); navReset(); return true; }
   return false;
 }
 function swBack() { return swGoBack(); }
 window.addEventListener('popstate', function (e) {
-  if (!st.me || st.screen !== 'main') return;
+  if (NAV_IOS || !st.me || st.screen !== 'main') return;
   var s = e.state;
   if (!s || !s.ft) { navShow(L.home ? 'home' : st.active); navReset(); return; }
   if (s.screen === st.active) { swOverlay(); return; }
