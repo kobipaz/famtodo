@@ -9,6 +9,19 @@ function hmTile(id, icon, name, sub, color, big, extra) {
   return '<button class="hmtile' + (big ? ' big' : '') + '" data-act="list" data-id="' + id + '" style="--kc:' + color + '">' +
     '<span class="hmic">' + icon + '</span><span class="hmname">' + esc(name) + '</span>' + (sub ? '<span class="hmsub">' + sub + '</span>' : '') + (extra || '') + '</button>';
 }
+function hmDate() {   /* today: weekday + date, and the Hebrew date under it */
+  var d = new Date(), MON = ['בינואר', 'בפברואר', 'במרץ', 'באפריל', 'במאי', 'ביוני', 'ביולי', 'באוגוסט', 'בספטמבר', 'באוקטובר', 'בנובמבר', 'בדצמבר'];
+  var heb = '';
+  try { heb = new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long' }).format(d); if (/\d/.test(heb)) heb = hebDay(heb); } catch (e) { heb = ''; }
+  return '<div class="hmdate"><b>יום ' + WD[d.getDay()] + '</b><span>' + d.getDate() + ' ' + MON[d.getMonth()] + '</span>' + (heb ? '<span class="hmheb">' + esc(heb) + '</span>' : '') + '</div>';
+}
+function hebDay(s) {   /* some browsers write the Hebrew day as a number (9 בכסלו) — turn it into letters (ט׳ בכסלו) */
+  return s.replace(/\d+/, function (n) {
+    n = +n; var T = ['', 'י', 'כ', 'ל'], O = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'];
+    var r = n === 15 ? 'טו' : n === 16 ? 'טז' : T[Math.floor(n / 10)] + O[n % 10];
+    return r.length > 1 ? r.slice(0, -1) + '״' + r.slice(-1) : r + '׳';
+  });
+}
 function hmCount(id) {
   var n = hmOpen(id), d = hmToday(id);
   return n ? n + ' משימות' + (d ? ' · <b>' + d + ' להיום</b>' : '') : 'אין משימות פתוחות 🎉';
@@ -21,7 +34,7 @@ renderList = function () {
   var me = st.me.id, people = st.lists.filter(function (id) { return L[id].personal; }), groups = st.lists.filter(function (id) { return !L[id].personal; });
   people.sort(function (a, b) { return (a === me ? -1 : 0) - (b === me ? -1 : 0); });
   var hr = new Date().getHours(), hi = hr < 5 ? 'לילה טוב' : hr < 12 ? 'בוקר טוב' : hr < 17 ? 'צהריים טובים' : hr < 21 ? 'ערב טוב' : 'לילה טוב';
-  var h = '<div class="hmhello">' + hi + ', ' + esc(P[me].name) + ' 👋</div>';
+  var h = '<div class="hmtop"><div class="hmhello">' + hi + ', ' + esc(P[me].name) + ' 👋</div>' + hmDate() + '</div>';
   h += '<div class="hmsec">המשפחה</div><div class="hmgrid">' + people.map(function (id) {
     return hmTile(id, '<span class="hmav" style="background:' + P[id].color + '">' + esc(P[id].name.charAt(0)) + '</span>', P[id].name + (id === me ? ' (שלי)' : ''), hmCount(id), P[id].color, id === me);
   }).join('') + '</div>';
