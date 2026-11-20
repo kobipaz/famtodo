@@ -1,0 +1,11 @@
+/* more contrast between the task cards and the app background */
+:root{--bg:#e8edf4;--line:#d8e0eb;--sh:0 1px 2px rgba(20,33,61,.10),0 4px 14px rgba(20,33,61,.08)}
+.addbar{background:linear-gradient(to top,var(--bg) 70%,rgba(232,237,244,0))}
+.task,.chday,.ghlist,.bdnext,#sqbar{border:1px solid #d3dbe7}
+.exrow,.sqrow,.chsec ~ .chrow{border-top:1px solid #d3dbe7;border-bottom:1px solid #d3dbe7;border-inline-end:1px solid #d3dbe7}
+html.dark{--bg:#0a0f19;--card:#1b2536;--line:#2e3a50}
+html.dark .addbar{background:linear-gradient(to top,var(--bg) 70%,rgba(10,15,25,0))}
+html.dark .task,html.dark .chday,html.dark .ghlist,html.dark .bdnext,html.dark #sqbar{border-color:#33415a}
+html.dark .exrow,html.dark .sqrow,html.dark .chsec ~ .chrow{border-top-color:#33415a;border-bottom-color:#33415a;border-inline-end-color:#33415a}
+header{background:rgba(232,237,244,.92)}
+html.dark header{background:rgba(10,15,25,.92)}

@@ -1,4 +1,6 @@
-/* ↩ Swipe left→right = back (the iPhone home-screen app has no back button).
+/* ↩ Back: swipe left→right on the iPhone; on the Mac the trackpad's two-finger swipe, the mouse back button,
+   ⌘[ and Esc — every screen change is also a browser history step, so the browser's own back works too.
+   (the iPhone home-screen app has no back button).
    Back closes, in order: an open window → the ☰ menu → the settings panel → an open task card → the previous screen.
    Loaded last so it sees every screen change (including the home screen). */
 var NAV = { stack: [], last: null, going: false };
@@ -9,6 +11,7 @@ renderList = function () {
     if (NAV.last && NAV.last !== st.active && !NAV.going) {
       NAV.stack.push(NAV.last);
       if (NAV.stack.length > 30) NAV.stack.shift();
+      try { history.pushState({ ftnav: 1 }, ''); } catch (e) {}
     }
     NAV.last = st.active; NAV.going = false;
   }
@@ -16,13 +19,32 @@ renderList = function () {
 };
 var _startMainSW = startMain;
 startMain = function (p) { NAV.stack = []; NAV.last = null; _startMainSW(p); };
-function swBack() {
+function swOverlay() {   /* close the top window / menu / open card; true if something was closed */
   var back = document.querySelector('.nbback');
   if (back) { back.click(); return true; }
   if (st.drawer) { st.drawer = false; renderChips(); return true; }
   if (st.panel) { st.panel = false; renderPanel(); return true; }
+  if (st.timePick || st.datePick) { var c = document.querySelector('#sheet [data-time-close],#sheet [data-date-close]'); if (c) { c.click(); return true; } }
   if (st.editing) return false;
   if (st.open) { st.open = null; renderList(); return true; }
+  return false;
+}
+function swGoBack() {   /* gesture / key: close something, or go one screen back through the browser history */
+  if (swOverlay()) return true;
+  if (NAV.stack.length && history.state && history.state.ftnav) { history.back(); return true; }
+  return swBack();
+}
+window.addEventListener('popstate', function () {
+  if (!st.me || st.screen !== 'main') return;
+  if (swOverlay()) { try { history.pushState({ ftnav: 1 }, ''); } catch (e) {} return; }   /* closing a window doesn't use up a screen step */
+  swBack();
+});
+document.addEventListener('keydown', function (e) {
+  if (!st.me || st.screen !== 'main') return;
+  if (e.key === 'Escape') { if (swOverlay()) e.preventDefault(); }
+});
+function swBack() {
+  if (swOverlay()) return true;
   while (NAV.stack.length) {
     var prev = NAV.stack.pop();
     if (prev === st.active || !(L[prev] || prev === 'all' || prev === 'archive')) continue;
@@ -68,7 +90,7 @@ document.addEventListener('touchmove', function (e) {
 function swEnd() {
   var h = document.getElementById('swhint');
   if (h) { h.style.opacity = 0; h.classList.remove('go'); }
-  if (SW && SW.ok && SW.dx >= 90) swBack();
+  if (SW && SW.ok && SW.dx >= 90) swGoBack();
   SW = null;
 }
 document.addEventListener('touchend', swEnd, { passive: true });
